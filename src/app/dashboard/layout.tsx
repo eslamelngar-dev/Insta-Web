@@ -1,5 +1,5 @@
-import Sidebar from "@/components/shared/Sidebar"; // استدعاء السايد بار
-
+import Sidebar from "@/components/shared/Sidebar";
+import { ThemeProvider } from "@/components/ThemeProvider";
 export default function DashboardLayout({
   children,
 }: {

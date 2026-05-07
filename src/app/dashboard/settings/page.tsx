@@ -1,38 +1,38 @@
 "use client";
 
 import React from "react";
-import { User, Shield, Bell, Trash2, Save } from "lucide-react";
+import { User, Shield, Trash2, Save } from "lucide-react";
 
 export default function SettingsPage() {
   return (
-    <div className="p-12 max-w-4xl mx-auto">
+    <div className="p-12 max-w-4xl mx-auto text-slate-900 dark:text-white">
       <header className="mb-12">
         <h2 className="text-4xl font-black tracking-tight">Account Settings</h2>
-        <p className="text-slate-500 mt-2">Manage your personal information and security</p>
+        <p className="text-slate-500 dark:text-slate-400 mt-2">Manage your personal information and security</p>
       </header>
 
       <div className="space-y-8">
-        <section className="glass p-8 rounded-[2.5rem]">
+        <section className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 p-8 rounded-[2.5rem] shadow-sm">
           <h3 className="text-lg font-bold mb-6 flex items-center gap-3">
             <User size={20} className="text-indigo-500" /> Profile Information
           </h3>
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase px-1">Full Name</label>
-              <input type="text" defaultValue="Eslam Elngar" className="w-full bg-slate-950 border border-white/5 rounded-xl px-5 py-4 text-sm focus:border-indigo-500 outline-none transition-all" />
+              <label className="text-xs font-bold text-slate-400 uppercase px-1">Full Name</label>
+              <input type="text" defaultValue="Eslam Elngar" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/5 rounded-xl px-5 py-4 text-sm focus:border-indigo-500 outline-none transition-all" />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase px-1">Email Address</label>
-              <input type="email" defaultValue="eslam@example.com" className="w-full bg-slate-950 border border-white/5 rounded-xl px-5 py-4 text-sm focus:border-indigo-500 outline-none transition-all" />
+              <label className="text-xs font-bold text-slate-400 uppercase px-1">Email Address</label>
+              <input type="email" defaultValue="eslam@example.com" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/5 rounded-xl px-5 py-4 text-sm focus:border-indigo-500 outline-none transition-all" />
             </div>
           </div>
         </section>
 
-        <section className="glass p-8 rounded-[2.5rem]">
+        <section className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 p-8 rounded-[2.5rem] shadow-sm">
           <h3 className="text-lg font-bold mb-6 flex items-center gap-3">
             <Shield size={20} className="text-indigo-500" /> Security
           </h3>
-          <button className="px-6 py-3 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-black transition-all border border-white/5">
+          <button className="px-6 py-3 bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 rounded-xl text-xs font-black transition-all border border-slate-200 dark:border-white/5">
             Change Password
           </button>
         </section>
