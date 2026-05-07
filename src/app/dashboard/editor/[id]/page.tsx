@@ -6,10 +6,9 @@ import { Save, Smartphone, Monitor, ChevronLeft, Globe } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner"; // إضافة مكتبة الإشعارات هنا
 
-// لاحظ التغيير في السطر ده: خلينا الـ params عبارة عن Promise
 export default function Editor({ params }: { params: Promise<{ id: string }> }) {
-  // هنا استخدمنا use() عشان نفك الـ params زي ما Next.js 15 بيطلب
   const { id } = use(params);
   
   const router = useRouter();
@@ -22,7 +21,6 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
     color: "#6366f1" 
   });
 
-  // جلب البيانات لو كان الموقع موجود بالفعل
   useEffect(() => {
     if (id !== "new") {
       const fetchSite = async () => {
@@ -37,21 +35,20 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
 
   const handleDeploy = async () => {
     setLoading(true);
-    // الحصول على الـ ID بتاع المستخدم اللي مسجل دخول
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
-      alert("Please login first");
-      return;
-    }
-
-    if (!data.username) {
-      alert("Please enter a username for your URL");
+      toast.error("Please login first");
       setLoading(false);
       return;
     }
 
-    // حفظ أو تحديث الموقع في قاعدة البيانات
+    if (!data.username) {
+      toast.error("Please enter a username for your URL");
+      setLoading(false);
+      return;
+    }
+
     const payload = {
       user_id: user.id,
       username: data.username.toLowerCase().replace(/\s+/g, '-'),
@@ -65,9 +62,9 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
     );
 
     if (error) {
-      alert(error.message);
+      toast.error(error.message);
     } else {
-      alert("Site Deployed Successfully! 🚀");
+      toast.success("Site Deployed Successfully! 🚀");
       router.push('/dashboard');
     }
     setLoading(false);
@@ -100,7 +97,7 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
           <section className="space-y-4">
             <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Brand Color</label>
             <div className="grid grid-cols-4 gap-3">
-              {["#6366f1", "#ef4444", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#0ea5e9", "#ffffff"].map(c => (
+              {["#6366f1", "#ef4444", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#0ea5e9", "#4a5d23"].map(c => (
                 <button key={c} onClick={() => setData({...data, color: c})} className={`h-12 rounded-xl transition-all active:scale-90 ${data.color === c ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-950' : ''}`} style={{ backgroundColor: c }} />
               ))}
             </div>
