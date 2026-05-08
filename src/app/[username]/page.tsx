@@ -2,10 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { notFound } from "next/navigation";
 import { Globe, Mail, Zap, ExternalLink, Code, Layout, MessageCircle, Play, ChevronRight } from "lucide-react";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
 const Icons: Record<string, React.FC<any>> = {
   x: (props) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}><path d="M4 4l11.733 16H20L8.267 4H4zM4 20l6.768-6.768m2.46-2.46L20 4" /></svg>,
@@ -17,16 +14,7 @@ const Icons: Record<string, React.FC<any>> = {
   youtube: (props) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" /><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" /></svg>
 };
 
-const BtnIcons: Record<string, React.FC<any>> = {
-  globe: Globe,
-  mail: Mail,
-  zap: Zap,
-  link: ExternalLink,
-  code: Code,
-  layout: Layout,
-  chat: MessageCircle,
-  play: Play
-};
+const BtnIcons: Record<string, React.FC<any>> = { globe: Globe, mail: Mail, zap: Zap, link: ExternalLink, code: Code, layout: Layout, chat: MessageCircle, play: Play };
 
 export default async function UserSite({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
@@ -34,53 +22,35 @@ export default async function UserSite({ params }: { params: Promise<{ username:
 
   if (!site) notFound();
 
+  const isDark = site.theme_mode === "dark";
   const activeSocials = site.social_links?.filter((s: any) => s.url).slice(0, 3) || [];
 
   return (
-    <div className="min-h-screen p-8 flex flex-col items-center transition-all duration-500" style={{ backgroundColor: `${site.primary_color}05` }}>
-      <div className="max-w-md w-full text-center mt-12">
-        <div className="w-32 h-32 rounded-full border-4 border-white dark:border-slate-800 shadow-2xl mx-auto mb-8 overflow-hidden bg-white flex items-center justify-center shrink-0">
-          {site.avatar_url ? (
-            <img src={site.avatar_url} alt="" className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-white text-4xl font-black" style={{ backgroundColor: site.primary_color }}>
-              {site.title?.charAt(0)}
-            </div>
-          )}
+    <div className={`min-h-screen p-8 flex flex-col items-center transition-all duration-700 ${isDark ? 'dark bg-[#0d1117]' : 'bg-white'}`} style={{ backgroundColor: isDark ? '#0d1117' : '#ffffff' }}>
+      <div className="max-w-md w-full text-center mt-12 md:mt-24">
+        <div className="w-32 h-32 rounded-full border-4 border-white dark:border-slate-800 shadow-2xl mx-auto mb-8 overflow-hidden bg-white dark:bg-slate-900 flex items-center justify-center shrink-0">
+          {site.avatar_url ? <img src={site.avatar_url} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-white text-4xl font-black" style={{ backgroundColor: site.primary_color }}>{site.title?.charAt(0)}</div>}
         </div>
-
-        <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-2 tracking-tight uppercase">{site.title}</h1>
-        <p className="text-slate-500 dark:text-slate-400 font-medium mb-10 text-sm leading-relaxed">{site.bio}</p>
-
-        <div className="flex justify-center gap-4 mb-12">
+        <h1 className={`text-4xl font-black mb-3 tracking-tighter uppercase ${isDark ? 'text-white' : 'text-slate-900'}`}>{site.title}</h1>
+        <p className={`font-medium mb-12 px-4 leading-relaxed text-sm max-w-sm mx-auto ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{site.bio}</p>
+        <div className="flex justify-center gap-6 mb-16">
           {activeSocials.map((social: any) => {
             const Icon = Icons[social.platform] || Globe;
-            return (
-              <a key={social.id} href={social.url} target="_blank" rel="noreferrer" className="p-4 bg-white dark:bg-white/5 rounded-3xl shadow-lg border border-slate-100 dark:border-white/5 text-slate-900 dark:text-white hover:scale-110 transition-all active:scale-95">
-                <Icon />
-              </a>
-            );
+            return <a key={social.id} href={social.url} target="_blank" rel="noreferrer" className={`p-5 rounded-[2rem] shadow-xl border transition-all hover:scale-110 active:scale-95 ${isDark ? 'bg-slate-900 border-white/5 text-white' : 'bg-white border-slate-100 text-slate-900'}`}><Icon /></a>
           })}
         </div>
-
-        <div className="space-y-4 w-full">
+        <div className="space-y-4 w-full px-2">
           {site.links?.map((link: any) => {
             const BIcon = BtnIcons[link.icon] || ExternalLink;
             return (
-              <a key={link.id} href={link.url} target="_blank" rel="noreferrer" className="group flex items-center justify-between w-full px-8 py-5 rounded-[2rem] font-black text-white shadow-xl transition-all hover:scale-[1.02] active:scale-95 text-[10px] uppercase tracking-widest" style={{ backgroundColor: site.primary_color }}>
-                <div className="flex items-center gap-4">
-                   <BIcon size={18} />
-                   {link.label}
-                </div>
-                <ChevronRight size={16} className="opacity-40 group-hover:translate-x-1 transition-transform" />
+              <a key={link.id} href={link.url} target="_blank" rel="noreferrer" className="group flex items-center justify-between w-full px-8 py-5 rounded-[2.5rem] font-black shadow-2xl transition-all hover:scale-[1.03] active:scale-95 text-[10px] uppercase tracking-[0.2em] text-white" style={{ backgroundColor: site.primary_color }}>
+                <div className="flex items-center gap-4"><div className="p-2 bg-white/10 rounded-xl"><BIcon size={18} /></div>{link.label}</div>
+                <ChevronRight size={18} className="opacity-40 group-hover:translate-x-1 transition-transform" />
               </a>
-            );
+            )
           })}
         </div>
-
-        <footer className="mt-32 opacity-20 font-black text-[10px] tracking-[0.5em] uppercase pb-10 dark:text-white">
-          Powered by InstaWeb
-        </footer>
+        <footer className={`mt-32 opacity-20 font-black text-[10px] tracking-[0.6em] uppercase pb-12 ${isDark ? 'text-white' : 'text-slate-900'}`}>Powered by InstaWeb</footer>
       </div>
     </div>
   );

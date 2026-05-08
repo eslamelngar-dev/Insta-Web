@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, use } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Save, Smartphone, Monitor, ChevronLeft, Camera, Plus, Trash2, Globe, Mail, Zap, ExternalLink, Code, Layout, MessageCircle, Play } from "lucide-react";
+import { Save, Smartphone, Monitor, ChevronLeft, Camera, Plus, Trash2, Globe, Mail, Zap, ExternalLink, Code, Layout, MessageCircle, Play, Sun, Moon } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
@@ -27,7 +27,7 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [data, setData] = useState({
-    username: "", title: "", bio: "", color: "#6366f1", avatar_url: "", links: [] as any[], social_links: [] as any[]
+    username: "", title: "", bio: "", color: "#6366f1", avatar_url: "", theme_mode: "light", links: [] as any[], social_links: [] as any[]
   });
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
         if (site) {
           setData({
             username: site.username, title: site.title, bio: site.bio, color: site.primary_color,
-            avatar_url: site.avatar_url || "", links: site.links || [], social_links: site.social_links || []
+            avatar_url: site.avatar_url || "", theme_mode: site.theme_mode || "light", links: site.links || [], social_links: site.social_links || []
           });
         }
       };
@@ -72,7 +72,7 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
     const { error } = await supabase.from("sites").upsert({
       user_id: user.id, ...(id !== "new" && { id }), username: data.username.toLowerCase().trim(),
       title: data.title, bio: data.bio, primary_color: data.color, avatar_url: data.avatar_url,
-      links: data.links, social_links: data.social_links
+      theme_mode: data.theme_mode, links: data.links, social_links: data.social_links
     });
     if (error) toast.error(error.message); else { toast.success("Deployment successful"); router.push("/dashboard"); }
     setLoading(false);
@@ -83,19 +83,37 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
       <aside className="w-[450px] border-r border-slate-200 dark:border-white/5 flex flex-col bg-slate-50/50 dark:bg-slate-900/30 backdrop-blur-3xl overflow-hidden">
         <div className="p-6 border-b border-slate-200 dark:border-white/5 flex items-center justify-between bg-white dark:bg-slate-900/50">
           <Link href="/dashboard" className="p-2 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl transition-all"><ChevronLeft size={20}/></Link>
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500">Architect v4.5</span>
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500">Architect v5.5</span>
         </div>
 
         <div className="flex-1 p-8 space-y-10 overflow-y-auto custom-scroll pb-24">
           <section className="flex flex-col items-center">
             <div className="relative group w-28 h-28">
-              <div className="w-full h-full rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-white/5 shadow-inner">
+              <div className="w-full h-full rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-white/5 shadow-inner transition-all">
                 {data.avatar_url ? <img src={data.avatar_url} className="w-full h-full object-cover" /> : <Camera className="w-full h-full p-8 text-slate-300" />}
               </div>
               <label className="absolute inset-0 flex items-center justify-center bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-all">
                 <input type="file" className="hidden" onChange={handleImageUpload} disabled={uploading} />
                 <span className="text-[10px] font-black uppercase tracking-widest">{uploading ? "..." : "Change"}</span>
               </label>
+            </div>
+          </section>
+
+          <section className="space-y-4">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Public Site Theme</label>
+            <div className="grid grid-cols-2 gap-2 p-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-2xl shadow-sm">
+              <button onClick={() => setData({...data, theme_mode: "light"})} className={`flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${data.theme_mode === "light" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20" : "text-slate-400 hover:text-slate-600"}`}>
+                <Sun size={14} /> Light
+              </button>
+              <button onClick={() => setData({...data, theme_mode: "dark"})} className={`flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${data.theme_mode === "dark" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20" : "text-slate-400 hover:text-slate-600"}`}>
+                <Moon size={14} /> Dark
+              </button>
+            </div>
+            <div className="flex items-center gap-4 px-2 pt-2">
+              <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/5">
+                <div className="h-full" style={{ width: '100%', backgroundColor: data.color }} />
+              </div>
+              <input type="color" value={data.color} onChange={(e) => setData({...data, color: e.target.value})} className="w-8 h-8 rounded-lg overflow-hidden border-none cursor-pointer p-0 bg-transparent shrink-0" />
             </div>
           </section>
 
@@ -136,7 +154,7 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
             </div>
           </section>
 
-          <section className="space-y-4">
+          <section className="space-y-4 pb-20">
             <div className="flex items-center justify-between">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Custom Nodes</label>
               <button onClick={() => setData({...data, links: [...data.links, { id: Date.now().toString(), label: "New Node", url: "https://", icon: "link" }]})} className="p-1 text-indigo-500 hover:bg-indigo-500/10 rounded-lg transition-all"><Plus size={24}/></button>
@@ -180,43 +198,26 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
         </div>
 
         <motion.div 
-          animate={{ 
-            width: isMobile ? 390 : "100%", 
-            height: isMobile ? 844 : "100%", 
-            borderRadius: isMobile ? "4.5rem" : "0px",
-            scale: isMobile ? 0.9 : 1
-          }} 
-          className="bg-white dark:bg-slate-950 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.4)] border-[12px] border-slate-200 dark:border-slate-800 relative overflow-hidden flex flex-col items-center"
+          animate={{ width: isMobile ? 400 : "100%", height: isMobile ? 850 : "100%", borderRadius: isMobile ? "4.5rem" : "0px", scale: isMobile ? 0.85 : 1 }} 
+          className={`shadow-[0_50px_100px_-20px_rgba(0,0,0,0.4)] border-[12px] border-slate-200 dark:border-slate-800 relative overflow-hidden flex flex-col items-center transition-colors duration-500 ${data.theme_mode === "dark" ? "bg-[#0d1117]" : "bg-white"}`}
         >
-          <div className="w-full h-full overflow-y-auto custom-scroll p-8 md:p-12 flex flex-col items-center text-center">
+          <div className="w-full h-full overflow-y-auto custom-scroll p-8 md:p-16 flex flex-col items-center text-center" style={{ backgroundColor: data.theme_mode === "dark" ? "#0d1117" : `${data.color}05` }}>
             <div className="w-28 h-28 rounded-full mb-8 bg-white dark:bg-slate-900 shadow-2xl overflow-hidden border-4 border-white dark:border-slate-800 shrink-0">
-              {data.avatar_url ? (
-                <img src={data.avatar_url} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-white text-3xl font-black" style={{ backgroundColor: data.color }}>
-                   {data.title?.charAt(0)}
-                </div>
-              )}
+              {data.avatar_url ? <img src={data.avatar_url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-white text-3xl font-black" style={{ backgroundColor: data.color }}>{data.title?.charAt(0) || "U"}</div>}
             </div>
-            <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-2 tracking-tighter uppercase shrink-0">{data.title || "Identity"}</h2>
-            <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-12 shrink-0">{data.bio || "Bio Segment"}</p>
-            
+            <h2 className={`text-3xl font-black mb-2 tracking-tighter uppercase shrink-0 ${data.theme_mode === "dark" ? "text-white" : "text-slate-900"}`}>{data.title || "Identity"}</h2>
+            <p className={`text-[10px] font-black uppercase tracking-[0.2em] mb-12 shrink-0 ${data.theme_mode === "dark" ? "text-slate-400" : "text-slate-500"}`}>{data.bio || "Segment Headline"}</p>
             <div className="flex justify-center gap-4 mb-12 shrink-0">
               {data.social_links.filter(s => s.url).slice(0, 3).map(social => {
                 const Icon = Icons[social.platform];
-                return (
-                  <div key={social.id} className="p-5 bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-white/5 text-slate-900 dark:text-white shadow-lg">
-                    <Icon size={24} />
-                  </div>
-                )
+                return <div key={social.id} className={`p-5 rounded-[2rem] border shadow-lg ${data.theme_mode === "dark" ? "bg-slate-900 border-white/5 text-white" : "bg-white border-slate-100 text-slate-900"}`}><Icon size={24} /></div>
               })}
             </div>
-
-            <div className="w-full space-y-4 max-w-sm pb-12">
+            <div className="w-full space-y-4 max-w-sm pb-16">
               {data.links.map(l => {
                 const BIcon = ButtonIcons[l.icon] || ExternalLink;
                 return (
-                  <div key={l.id} className="w-full px-8 py-5 rounded-[2.5rem] border-2 font-black text-[10px] uppercase tracking-[0.2em] flex items-center justify-between" style={{ borderColor: data.color, color: data.color }}>
+                  <div key={l.id} className="w-full px-8 py-5 rounded-[2.5rem] border-2 font-black text-[10px] uppercase tracking-[0.3em] flex items-center justify-between" style={{ borderColor: data.color, color: data.theme_mode === "dark" ? "white" : data.color, backgroundColor: data.theme_mode === "dark" ? `${data.color}20` : 'transparent' }}>
                     <div className="flex items-center gap-4"><BIcon size={18} /> {l.label}</div>
                     <ExternalLink size={14} className="opacity-30" />
                   </div>
