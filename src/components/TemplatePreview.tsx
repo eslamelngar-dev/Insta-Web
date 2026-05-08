@@ -1,9 +1,8 @@
-import { createClient } from "@supabase/supabase-js";
-import { notFound } from "next/navigation";
-import { Globe, Mail, Zap, ExternalLink, Code, Layout, MessageCircle, Play } from "lucide-react";
-import { TEMPLATES_REGISTRY } from "@/lib/templates-registry";
+"use client";
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+import React, { useEffect, useRef, useState } from "react";
+import ReactDOM from "react-dom";
+import { Globe, Mail, Zap, ExternalLink, Code, Layout, MessageCircle, Play } from "lucide-react";
 
 const Icons: Record<string, React.FC<any>> = {
   x: (p) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...p}><path d="M4 4l11.733 16H20L8.267 4H4zM4 20l6.768-6.768m2.46-2.46L20 4" /></svg>,
@@ -17,22 +16,77 @@ const Icons: Record<string, React.FC<any>> = {
 
 const BtnIcons: Record<string, React.FC<any>> = { globe: Globe, mail: Mail, zap: Zap, link: ExternalLink, code: Code, layout: Layout, chat: MessageCircle, play: Play };
 
-export default async function UserSite({ params }: { params: Promise<{ username: string }> }) {
-  const { username } = await params;
-  const { data: site } = await supabase.from("sites").select("*").eq("username", username).single();
+interface TemplatePreviewProps {
+  templateComponent: React.ElementType;
+  starterContent: any;
+}
 
-  if (!site) notFound();
+export default function TemplatePreview({ templateComponent: TemplateComponent, starterContent }: TemplatePreviewProps) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [mountNode, setMountNode] = useState<HTMLElement | null>(null);
+  const isDark = starterContent.theme_mode === "dark";
 
-  const content = site.content || site;
-  const isDark = content.theme_mode === "dark";
+  useEffect(() => {
+    if (!iframeRef.current) return;
+    
+    const doc = iframeRef.current.contentDocument;
+    if (!doc) return;
 
-  const TemplateConfig = TEMPLATES_REGISTRY[site.template_id] || TEMPLATES_REGISTRY.classic;
-  const SelectedTemplateComponent = TemplateConfig.component;
+    const win = iframeRef.current.contentWindow;
+    if (!win) return;
+
+    doc.open();
+    doc.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Preview</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <script src="https://cdn.tailwindcss.com"></script>
+          <script>
+            tailwind.config = {
+              darkMode: 'class',
+              theme: {
+                extend: {
+                  colors: {
+                    slate: {
+                      950: '#0d1117',
+                    }
+                  }
+                }
+              }
+            }
+          </script>
+          <style>
+            body { margin: 0; padding: 0; overflow: hidden; width: 390px; height: 844px; }
+            .custom-scroll::-webkit-scrollbar { width: 0px; background: transparent; }
+          </style>
+        </head>
+        <body class="${isDark ? 'dark bg-[#0d1117]' : 'bg-white'}">
+          <div id="mount-point"></div>
+        </body>
+      </html>
+    `);
+    doc.close();
+
+    const root = doc.getElementById("mount-point");
+    setMountNode(root);
+
+  }, [isDark]);
 
   return (
-    <div className={`min-h-screen flex flex-col items-center transition-all duration-700 ${isDark ? 'dark bg-[#0d1117]' : 'bg-slate-50'}`} style={{ backgroundColor: isDark ? '#0d1117' : '#f8fafc' }}>
-      <SelectedTemplateComponent site={site} isDark={isDark} Icons={Icons} BtnIcons={BtnIcons} />
-      <footer className={`mt-32 opacity-20 font-black text-[10px] tracking-[0.6em] uppercase pb-12 ${isDark ? 'text-white' : 'text-slate-900'}`}>Powered by InstaWeb</footer>
-    </div>
+    <iframe 
+      ref={iframeRef} 
+      title="Template Live Preview"
+      className="w-[390px] h-[844px] border-none"
+      style={{ overflow: 'hidden' }}
+    >
+      {mountNode && ReactDOM.createPortal(
+        <div className="w-full h-full overflow-y-auto custom-scroll">
+          <TemplateComponent site={starterContent} isDark={isDark} Icons={Icons} BtnIcons={BtnIcons} />
+        </div>,
+        mountNode
+      )}
+    </iframe>
   );
 }

@@ -23,7 +23,7 @@ export default function RegisterPage() {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success("Welcome aboard! 🚀");
+      toast.success("Welcome aboard!");
       router.push("/dashboard");
     }
     setLoading(false);
