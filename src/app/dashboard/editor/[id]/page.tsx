@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, use } from "react";
 import { motion } from "framer-motion";
-import { Save, Smartphone, Monitor, ChevronLeft, Camera, Plus, Trash2, Globe, Mail, Zap, ExternalLink, Code, Layout, MessageCircle, Play, Sun, Moon, Loader2, Image as ImageIcon, Link as LinkIcon, User, GripVertical } from "lucide-react";
+import { Save, Smartphone, Monitor, ChevronLeft, Camera, Plus, Trash2, Globe, Mail, Zap, ExternalLink, Code, Layout, MessageCircle, Play, Sun, Moon, Loader2, Image as ImageIcon, Link as LinkIcon, User, GripVertical, Image } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -52,7 +52,7 @@ function SortableBlockItem({ block, updateBentoBlock, deleteBlock, handleImageUp
                 {uploadingId === block.id ? <Loader2 className="animate-spin text-indigo-500" size={16}/> : block.data.avatar_url ? <img src={block.data.avatar_url} className="w-full h-full object-cover"/> : <User size={16} className="text-slate-400"/>}
               </div>
               <label className="flex-1 py-3 text-center rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/5 text-[10px] font-black uppercase text-slate-500 cursor-pointer hover:bg-slate-100 transition-all">
-                Upload Avatar <input type="file" className="hidden" onChange={e => handleImageUpload(e, block.id)} />
+                Upload Avatar <input type="file" className="hidden" onChange={e => handleImageUpload(e, block.id)} accept="image/*" />
               </label>
             </div>
             <input value={block.data.title || ""} onChange={e => updateBentoBlock(block.id, { data: { ...block.data, title: e.target.value } })} placeholder="Title" className="w-full bg-transparent border border-slate-200 dark:border-white/5 rounded-xl px-4 py-3 text-sm font-bold uppercase outline-none" />
@@ -73,7 +73,7 @@ function SortableBlockItem({ block, updateBentoBlock, deleteBlock, handleImageUp
                 {uploadingId === block.id ? <Loader2 className="animate-spin text-indigo-500" size={24}/> : block.data.image_url ? <img src={block.data.image_url} className="w-full h-full object-cover"/> : <ImageIcon size={24} className="text-slate-400"/>}
             </div>
             <label className="w-full py-3 text-center rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/5 text-[10px] font-black uppercase text-slate-500 cursor-pointer hover:bg-slate-100 transition-all">
-                Upload Image <input type="file" className="hidden" onChange={e => handleImageUpload(e, block.id)} />
+                Upload Image <input type="file" className="hidden" onChange={e => handleImageUpload(e, block.id)} accept="image/*" />
             </label>
           </div>
         )}
@@ -134,9 +134,9 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
     }
   }, [id, templateId]);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, blockId?: string) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, target?: string) => {
     try {
-      setUploadingId(blockId || "main");
+      setUploadingId(target || "avatar");
       const file = e.target.files?.[0];
       if (!file) return;
       const fileExt = file.name.split(".").pop();
@@ -145,10 +145,12 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(fileName);
       
-      if (blockId) {
-        updateBentoBlock(blockId, { data: { ...data.content.blocks.find((b: any) => b.id === blockId).data, image_url: publicUrl, avatar_url: publicUrl } });
+      if (target === "cover") {
+        updateContent({ cover_url: publicUrl });
+      } else if (target && target !== "avatar") {
+        updateBentoBlock(target, { data: { ...data.content.blocks.find((b: any) => b.id === target).data, image_url: publicUrl, avatar_url: publicUrl } });
       } else {
-        setData({ ...data, content: { ...data.content, avatar_url: publicUrl } });
+        updateContent({ avatar_url: publicUrl });
       }
       toast.success("Image uploaded successfully");
     } catch (error: any) {
@@ -206,7 +208,7 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
     if (type === 'link') newBlock.data = { label: "New Link", url: "https://", icon: "link" };
     if (type === 'social') newBlock.data = { platform: "github", url: "https://" };
     if (type === 'image') newBlock.data = { image_url: "" };
-    updateContent({ blocks: [...data.content.blocks, newBlock] });
+    updateContent({ blocks: [...(data.content.blocks || []), newBlock] });
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -222,86 +224,126 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
   const ActiveTemplate = TemplateConfig.component;
   const activeFeatures = TemplateConfig.features || [];
 
-  const renderClassicControls = () => (
+  const renderStandardControls = () => (
     <>
-      <section className="flex flex-col items-center">
-        <div className="relative group w-32 h-32">
-          <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-slate-800 border-4 border-white dark:border-slate-800 shadow-2xl transition-all">
-            {uploadingId === "main" ? (
+      {activeFeatures.includes("cover") && (
+        <section className="flex flex-col items-center">
+          <div className="relative group w-full h-32 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 border-4 border-white dark:border-slate-800 shadow-xl transition-all">
+            {uploadingId === "cover" ? (
               <div className="w-full h-full flex items-center justify-center bg-slate-100 dark:bg-slate-800"><Loader2 className="animate-spin text-indigo-500" /></div>
-            ) : data.content.avatar_url ? (
-              <img src={data.content.avatar_url} className="w-full h-full object-cover" />
+            ) : data.content.cover_url ? (
+              <img src={data.content.cover_url} className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-slate-300"><Camera size={32} /></div>
+              <div className="w-full h-full flex flex-col gap-2 items-center justify-center text-slate-400"><Image size={24} /><span className="text-[10px] font-black uppercase">Cover Image</span></div>
             )}
+            <label className="absolute inset-0 flex items-center justify-center bg-black/50 text-white opacity-0 group-hover:opacity-100 cursor-pointer transition-all backdrop-blur-sm">
+              <input type="file" className="hidden" onChange={e => handleImageUpload(e, "cover")} disabled={uploadingId !== null} accept="image/*" />
+              <span className="text-[10px] font-black uppercase">Upload Cover</span>
+            </label>
           </div>
-          <label className="absolute inset-0 flex items-center justify-center bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-all backdrop-blur-sm">
-            <input type="file" className="hidden" onChange={e => handleImageUpload(e)} disabled={uploadingId !== null} accept="image/*" />
-            <span className="text-[10px] font-black uppercase">Change Photo</span>
-          </label>
-        </div>
-      </section>
+        </section>
+      )}
 
-      <section className="space-y-4">
-        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Base Info</label>
-        <div className="space-y-3">
-          <input value={data.content.title || ""} onChange={e => updateContent({ title: e.target.value })} placeholder="Full Name" className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-xl px-4 py-3 text-sm font-bold uppercase outline-none" />
-          <textarea value={data.content.bio || ""} onChange={e => updateContent({ bio: e.target.value })} placeholder="Biography" className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-xl px-4 py-3 text-sm h-24 resize-none outline-none" />
-        </div>
-      </section>
-
-      <section className="space-y-4">
-        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Social Nodes</label>
-        <div className="flex flex-wrap gap-2 mb-4">
-          {Object.keys(Icons).map(platform => {
-            const Icon = Icons[platform];
-            const isAdded = data.content.social_links?.some((s: any) => s.platform === platform);
-            return (
-              <button key={platform} onClick={() => {
-                if (isAdded) updateContent({ social_links: data.content.social_links.filter((s: any) => s.platform !== platform) });
-                else updateContent({ social_links: [...(data.content.social_links || []), { id: Date.now().toString(), platform, url: "" }] });
-              }} className={`p-3 rounded-xl border transition-all ${isAdded ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-white/5 hover:border-indigo-500'}`}><Icon /></button>
-            )
-          })}
-        </div>
-        {data.content.social_links?.map((s: any) => (
-          <div key={s.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-white/5 shadow-sm">
-            <span className="text-[10px] font-black uppercase text-indigo-500 w-12">{s.platform}</span>
-            <input value={s.url || ""} onChange={e => {
-              const nl = [...data.content.social_links]; const t = nl.find(x => x.id === s.id); if (t) t.url = e.target.value; updateContent({ social_links: nl });
-            }} placeholder="https://..." className="bg-transparent text-xs w-full outline-none" />
+      {activeFeatures.includes("avatar") && (
+        <section className="flex flex-col items-center">
+          <div className="relative group w-32 h-32">
+            <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-slate-800 border-4 border-white dark:border-slate-800 shadow-2xl transition-all">
+              {uploadingId === "avatar" ? (
+                <div className="w-full h-full flex items-center justify-center bg-slate-100 dark:bg-slate-800"><Loader2 className="animate-spin text-indigo-500" /></div>
+              ) : data.content.avatar_url ? (
+                <img src={data.content.avatar_url} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-slate-300"><Camera size={32} /></div>
+              )}
+            </div>
+            <label className="absolute inset-0 flex items-center justify-center bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-all backdrop-blur-sm">
+              <input type="file" className="hidden" onChange={e => handleImageUpload(e, "avatar")} disabled={uploadingId !== null} accept="image/*" />
+              <span className="text-[10px] font-black uppercase">Change Photo</span>
+            </label>
           </div>
-        ))}
-      </section>
+        </section>
+      )}
 
-      <section className="space-y-4 pb-20">
-        <div className="flex items-center justify-between px-1">
-          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Custom Nodes</label>
-          <button onClick={() => updateContent({ links: [...(data.content.links || []), { id: Date.now().toString(), label: "New Button", url: "https://", icon: "link" }] })} className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/20"><Plus size={20}/></button>
-        </div>
-        {data.content.links?.map((link: any, idx: number) => (
-          <div key={link.id} className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-white/5 space-y-4 shadow-sm group relative">
-            <div className="flex gap-4">
-              <div className="space-y-2 flex-1">
-                <input value={link.label || ""} onChange={e => {
-                  const nl = [...data.content.links]; nl[idx].label = e.target.value; updateContent({ links: nl });
-                }} className="w-full bg-transparent text-sm font-black outline-none tracking-tight uppercase" placeholder="Button Label" />
-                <input value={link.url || ""} onChange={e => {
-                  const nl = [...data.content.links]; nl[idx].url = e.target.value; updateContent({ links: nl });
-                }} className="w-full bg-transparent text-[10px] text-slate-400 outline-none" placeholder="URL" />
+      {activeFeatures.includes("tone") && (
+        <section className="space-y-4">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Identity Tone</label>
+          <div className="grid grid-cols-2 gap-2 p-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-2xl">
+            <button onClick={() => updateContent({ theme_mode: "light" })} className={`flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${data.content.theme_mode === "light" ? "bg-indigo-600 text-white shadow-lg" : "text-slate-400"}`}><Sun size={14} /> Light</button>
+            <button onClick={() => updateContent({ theme_mode: "dark" })} className={`flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${data.content.theme_mode === "dark" ? "bg-indigo-600 text-white shadow-lg" : "text-slate-400"}`}><Moon size={14} /> Dark</button>
+          </div>
+          <div className="flex items-center gap-4 px-2">
+             <input type="color" value={data.content.color || "#6366f1"} onChange={(e) => updateContent({ color: e.target.value })} className="w-10 h-10 rounded-xl overflow-hidden border-none cursor-pointer bg-transparent" />
+             <p className="text-[10px] font-black uppercase text-slate-400">Brand Color</p>
+          </div>
+        </section>
+      )}
+
+      {activeFeatures.includes("baseInfo") && (
+        <section className="space-y-4">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Base Info</label>
+          <div className="space-y-3">
+            <input value={data.content.title || ""} onChange={e => updateContent({ title: e.target.value })} placeholder="Full Name" className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-xl px-4 py-3 text-sm font-bold uppercase outline-none" />
+            <textarea value={data.content.bio || ""} onChange={e => updateContent({ bio: e.target.value })} placeholder="Biography" className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-xl px-4 py-3 text-sm h-24 resize-none outline-none" />
+          </div>
+        </section>
+      )}
+
+      {activeFeatures.includes("social") && (
+        <section className="space-y-4">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Social Nodes</label>
+          <div className="flex flex-wrap gap-2 mb-4">
+            {Object.keys(Icons).map(platform => {
+              const Icon = Icons[platform];
+              const isAdded = data.content.social_links?.some((s: any) => s.platform === platform);
+              return (
+                <button key={platform} onClick={() => {
+                  if (isAdded) updateContent({ social_links: data.content.social_links.filter((s: any) => s.platform !== platform) });
+                  else updateContent({ social_links: [...(data.content.social_links || []), { id: Date.now().toString(), platform, url: "" }] });
+                }} className={`p-3 rounded-xl border transition-all ${isAdded ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-white/5 hover:border-indigo-500'}`}><Icon /></button>
+              )
+            })}
+          </div>
+          {data.content.social_links?.map((s: any) => (
+            <div key={s.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-white/5 shadow-sm">
+              <span className="text-[10px] font-black uppercase text-indigo-500 w-12">{s.platform}</span>
+              <input value={s.url || ""} onChange={e => {
+                const nl = [...data.content.social_links]; const t = nl.find(x => x.id === s.id); if (t) t.url = e.target.value; updateContent({ social_links: nl });
+              }} placeholder="https://..." className="bg-transparent text-xs w-full outline-none" />
+            </div>
+          ))}
+        </section>
+      )}
+
+      {activeFeatures.includes("links") && (
+        <section className="space-y-4 pb-20">
+          <div className="flex items-center justify-between px-1">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Custom Nodes</label>
+            <button onClick={() => updateContent({ links: [...(data.content.links || []), { id: Date.now().toString(), label: "New Button", url: "https://", icon: "link" }] })} className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/20"><Plus size={20}/></button>
+          </div>
+          {data.content.links?.map((link: any, idx: number) => (
+            <div key={link.id} className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-white/5 space-y-4 shadow-sm group relative">
+              <div className="flex gap-4">
+                <div className="space-y-2 flex-1">
+                  <input value={link.label || ""} onChange={e => {
+                    const nl = [...data.content.links]; nl[idx].label = e.target.value; updateContent({ links: nl });
+                  }} className="w-full bg-transparent text-sm font-black outline-none tracking-tight uppercase" placeholder="Button Label" />
+                  <input value={link.url || ""} onChange={e => {
+                    const nl = [...data.content.links]; nl[idx].url = e.target.value; updateContent({ links: nl });
+                  }} className="w-full bg-transparent text-[10px] text-slate-400 outline-none" placeholder="URL" />
+                </div>
+                <button onClick={() => updateContent({ links: data.content.links.filter((l: any) => l.id !== link.id) })} className="text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={18}/></button>
               </div>
-              <button onClick={() => updateContent({ links: data.content.links.filter((l: any) => l.id !== link.id) })} className="text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={18}/></button>
+              <div className="flex gap-2 pt-4 border-t border-slate-50 dark:border-white/10">
+                {Object.entries(ButtonIcons).map(([key, BIcon]) => (
+                  <button key={key} onClick={() => {
+                    const nl = [...data.content.links]; nl[idx].icon = key; updateContent({ links: nl });
+                  }} className={`p-2.5 rounded-xl transition-all ${link.icon === key ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5'}`}><BIcon size={16}/></button>
+                ))}
+              </div>
             </div>
-            <div className="flex gap-2 pt-4 border-t border-slate-50 dark:border-white/10">
-              {Object.entries(ButtonIcons).map(([key, BIcon]) => (
-                <button key={key} onClick={() => {
-                  const nl = [...data.content.links]; nl[idx].icon = key; updateContent({ links: nl });
-                }} className={`p-2.5 rounded-xl transition-all ${link.icon === key ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5'}`}><BIcon size={16}/></button>
-              ))}
-            </div>
-          </div>
-        ))}
-      </section>
+          ))}
+        </section>
+      )}
     </>
   );
 
@@ -344,7 +386,7 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
       <aside className="w-[450px] border-r border-slate-200 dark:border-white/5 flex flex-col bg-slate-50/50 dark:bg-slate-900/30 backdrop-blur-3xl overflow-hidden shadow-2xl">
         <div className="p-6 border-b border-slate-200 dark:border-white/5 flex items-center justify-between bg-white dark:bg-slate-900/50">
           <Link href="/dashboard" className="p-2 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl transition-all"><ChevronLeft size={20}/></Link>
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500">Builder v8.1</span>
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500">Builder v8.2</span>
         </div>
 
         <div className="flex-1 p-8 space-y-12 overflow-y-auto custom-scroll pb-24">
@@ -353,19 +395,11 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Global Config</label>
               <input value={data.username || ""} onChange={e => setData({...data, username: e.target.value})} placeholder="Username (your url)" className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-xl px-4 py-3 text-sm outline-none font-bold" />
             </div>
-            <div className="grid grid-cols-2 gap-2 p-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-2xl">
-              <button onClick={() => updateContent({ theme_mode: "light" })} className={`flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${data.content.theme_mode === "light" ? "bg-indigo-600 text-white shadow-lg" : "text-slate-400"}`}><Sun size={14} /> Light</button>
-              <button onClick={() => updateContent({ theme_mode: "dark" })} className={`flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${data.content.theme_mode === "dark" ? "bg-indigo-600 text-white shadow-lg" : "text-slate-400"}`}><Moon size={14} /> Dark</button>
-            </div>
-            <div className="flex items-center gap-4 px-2">
-               <input type="color" value={data.content.color || "#6366f1"} onChange={(e) => updateContent({ color: e.target.value })} className="w-10 h-10 rounded-xl overflow-hidden border-none cursor-pointer bg-transparent" />
-               <p className="text-[10px] font-black uppercase text-slate-400">Brand Color</p>
-            </div>
           </section>
 
           <div className="w-full h-px bg-slate-200 dark:bg-white/5" />
 
-          {data.template_id === 'bento' ? renderBentoControls() : renderClassicControls()}
+          {activeFeatures.length === 0 ? renderBentoControls() : renderStandardControls()}
 
         </div>
 
