@@ -7,8 +7,9 @@ import NotionTemplate from "@/components/templates/NotionTemplate";
 
 /**
  * TEMPLATES_REGISTRY
- * الدليل الشامل والكامل لجميع القوالب المتاحة.
- * تأكد من أن أسماء ملفات الـ Components في مجلد templates تطابق الأسماء المستوردة هنا.
+ * الدليل الشامل والكامل لجميع القوالب المتاحة في المنصة.
+ * تم ضبط الفئات (Categories) لتتطابق مع الفلاتر الرئيسية:
+ * [Bento, Portfolio, Social Card, Creator, Business, Event, etc.]
  */
 
 export const TEMPLATES_REGISTRY: Record<string, any> = {
@@ -16,7 +17,7 @@ export const TEMPLATES_REGISTRY: Record<string, any> = {
   classic: {
     id: "classic",
     name: "Classic Identity",
-    category: "Minimal",
+    category: "Social Card",
     description: "The timeless profile link style. Clean, centered, and effective.",
     component: ClassicTemplate,
     features: ["tone", "avatar", "baseInfo", "social", "links"],
@@ -41,7 +42,7 @@ export const TEMPLATES_REGISTRY: Record<string, any> = {
   bento: {
     id: "bento",
     name: "Bento Grid",
-    category: "Modern",
+    category: "Bento",
     description: "An interactive grid-based layout inspired by Apple's design language.",
     component: BentoTemplate,
     features: ["tone"],
@@ -55,8 +56,8 @@ export const TEMPLATES_REGISTRY: Record<string, any> = {
           colSpan: 2,
           rowSpan: 2,
           data: {
-            title: "Alex Morgan",
-            bio: "Product Designer & Creative Developer",
+            title: "Eslam Elngar",
+            bio: "Frontend Developer & UI Engineer",
             avatar_url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=300&h=300&fit=crop"
           }
         },
@@ -142,7 +143,7 @@ export const TEMPLATES_REGISTRY: Record<string, any> = {
   nexus: {
     id: "nexus",
     name: "Nexus Landing",
-    category: "Professional",
+    category: "Business",
     description: "High-end landing page with structured sections for businesses and agencies.",
     component: NexusLandingTemplate,
     features: ["tone", "hero", "features", "portfolio", "testimonial", "contact"],
@@ -200,7 +201,7 @@ export const TEMPLATES_REGISTRY: Record<string, any> = {
   glass: {
     id: "glass",
     name: "Glassmorphism",
-    category: "Premium",
+    category: "Creator",
     description: "Modern frosted glass effect with blur aesthetics.",
     component: GlassTemplate,
     features: ["cover", "avatar", "tone", "baseInfo", "social", "links"],
@@ -226,7 +227,7 @@ export const TEMPLATES_REGISTRY: Record<string, any> = {
   terminal: {
     id: "terminal",
     name: "Developer CLI",
-    category: "Tech",
+    category: "Portfolio",
     description: "For the coders. Command-line interface aesthetic.",
     component: TerminalTemplate,
     features: ["avatar", "tone", "baseInfo", "social", "links"],
@@ -248,10 +249,10 @@ export const TEMPLATES_REGISTRY: Record<string, any> = {
   },
 
   // 6. قالب نوشن (Notion Style)
- notion: {
+  notion: {
     id: "notion",
     name: "Notion Document",
-    category: "Landing Page",
+    category: "Portfolio",
     description: "Clean, document-style layout with a cover image.",
     component: NotionTemplate,
     features: ["cover", "avatar", "tone", "baseInfo", "social", "links"],
