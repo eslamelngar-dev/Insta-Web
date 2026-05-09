@@ -2,9 +2,10 @@
 
 import React from "react";
 import { motion } from "framer-motion";
+import type { Variants } from "framer-motion";
 import { ExternalLink, Globe } from "lucide-react";
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -15,7 +16,7 @@ const containerVariants = {
   },
 };
 
-const blockVariants = {
+const blockVariants: Variants = {
   hidden: {
     opacity: 0,
     scale: 0.8,
@@ -44,12 +45,8 @@ export default function BentoTemplate({ site, Icons, BtnIcons }: any) {
   const boxBg = isTemplateDark
     ? "bg-[#161b22] border-white/5"
     : "bg-white border-slate-200";
-  const textColor = isTemplateDark
-    ? "text-white"
-    : "text-slate-900";
-  const mutedText = isTemplateDark
-    ? "text-slate-400"
-    : "text-slate-500";
+  const textColor = isTemplateDark ? "text-white" : "text-slate-900";
+  const mutedText = isTemplateDark ? "text-slate-400" : "text-slate-500";
 
   return (
     <div
@@ -64,7 +61,7 @@ export default function BentoTemplate({ site, Icons, BtnIcons }: any) {
         animate="visible"
         className="max-w-4xl mx-auto grid grid-cols-2 @[768px]:grid-cols-4 gap-3 @[768px]:gap-4 pb-24 auto-rows-min"
       >
-        {content.blocks?.map((block: any, index: number) => {
+        {content.blocks?.map((block: any) => {
           const isWide = block.colSpan === 2;
           const isTall = block.rowSpan === 2;
 
@@ -112,6 +109,7 @@ export default function BentoTemplate({ site, Icons, BtnIcons }: any) {
                       <img
                         src={block.data.avatar_url}
                         className="w-14 h-14 @[768px]:w-24 @[768px]:h-24 rounded-2xl object-cover border-2 @[768px]:border-4 border-white dark:border-slate-800 shadow-xl"
+                        alt={block.data.title}
                       />
                     ) : (
                       <div
@@ -124,9 +122,7 @@ export default function BentoTemplate({ site, Icons, BtnIcons }: any) {
                   </motion.div>
                   <h2
                     className="text-xs @[768px]:text-2xl font-black uppercase tracking-tighter leading-tight line-clamp-2"
-                    style={{
-                      color: isTemplateDark ? "#fff" : "#000",
-                    }}
+                    style={{ color: isTemplateDark ? "#fff" : "#000" }}
                   >
                     {block.data.title}
                   </h2>
