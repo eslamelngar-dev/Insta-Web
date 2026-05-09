@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, use } from "react";
+import React, { useState, useEffect, use, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Save, Smartphone, Monitor, ChevronLeft, Camera, Plus, Trash2,
   Globe, Mail, Zap, ExternalLink, Code, Layout, MessageCircle,
   Play, Sun, Moon, Loader2, Image as ImageIcon, Link as LinkIcon,
-  User, GripVertical, Image, Star, CheckCircle2, ArrowRight, Eye, EyeOff
+  User, GripVertical, Image, Star, CheckCircle2, ArrowRight, Eye, EyeOff,
+  AlertCircle
 } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
@@ -265,6 +266,10 @@ export default function Editor({
   const [isMobile, setIsMobile] = useState(false);
   const [loading, setLoading] = useState(false);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
+  
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const initialLoad = useRef(true);
 
   const [data, setData] = useState({
     username: "",
@@ -308,6 +313,87 @@ export default function Editor({
     };
     initEditor();
   }, [id, templateId]);
+
+  useEffect(() => {
+    if (!data.username || data.username.trim() === "") {
+      setUsernameStatus('idle');
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setUsernameStatus('checking');
+      const cleanUsername = data.username.toLowerCase().trim();
+      
+      let query = supabase.from('sites').select('id').eq('username', cleanUsername);
+      if (id !== 'new') {
+        query = query.neq('id', id);
+      }
+      
+      const { data: existingSite } = await query.single();
+      
+      if (existingSite) {
+        setUsernameStatus('taken');
+      } else {
+        setUsernameStatus('available');
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [data.username, id]);
+
+  const saveToDatabase = async (showToast = false) => {
+    setSaveStatus('saving');
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setSaveStatus('unsaved');
+        return;
+      }
+      const dbTitle =
+        data.content.title ||
+        data.content.hero?.title ||
+        data.content.blocks?.find((b: any) => b.type === "profile")?.data?.title ||
+        "Untitled Identity";
+        
+      const payload = {
+        user_id: user.id,
+        ...(id !== "new" && { id }),
+        username: data.username.toLowerCase().trim() || `user_${Date.now()}`,
+        template_id: data.template_id,
+        content: data.content,
+        title: dbTitle,
+        bio: data.content.bio || data.content.hero?.subtitle || "",
+        primary_color: data.content.color || "#6366f1",
+        theme_mode: data.content.theme_mode || "light",
+      };
+      const { error } = await supabase.from("sites").upsert(payload);
+      if (error) throw error;
+      
+      setSaveStatus('saved');
+      if (showToast) {
+        toast.success("Deployment Successful!");
+        router.push("/dashboard");
+      }
+    } catch (err: any) {
+      setSaveStatus('unsaved');
+      if (showToast) toast.error(err.message);
+    }
+  };
+
+  useEffect(() => {
+    if (initialLoad.current) {
+      if (Object.keys(data.content).length > 0) {
+        initialLoad.current = false;
+      }
+      return;
+    }
+    
+    setSaveStatus('unsaved');
+    const timer = setTimeout(() => {
+      saveToDatabase(false);
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [data.content, data.username, data.template_id]);
 
   const updateContent = (updates: any) =>
     setData((prev) => ({
@@ -365,39 +451,12 @@ export default function Editor({
   };
 
   const handleDeploy = async () => {
-    setLoading(true);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      setLoading(false);
+    if (usernameStatus === 'taken') {
+      toast.error("Please choose an available username before deploying.");
       return;
     }
-    const dbTitle =
-      data.content.title ||
-      data.content.hero?.title ||
-      data.content.blocks?.find((b: any) => b.type === "profile")?.data
-        .title ||
-      "Untitled Identity";
-    const payload = {
-      user_id: user.id,
-      ...(id !== "new" && { id }),
-      username:
-        data.username.toLowerCase().trim() || `user_${Date.now()}`,
-      template_id: data.template_id,
-      content: data.content,
-      title: dbTitle,
-      bio: data.content.bio || data.content.hero?.subtitle || "",
-      primary_color: data.content.color || "#6366f1",
-      theme_mode: data.content.theme_mode || "light",
-    };
-    const { error } = await supabase.from("sites").upsert(payload);
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success("Deployment Successful!");
-      router.push("/dashboard");
-    }
+    setLoading(true);
+    await saveToDatabase(true);
     setLoading(false);
   };
 
@@ -1194,9 +1253,26 @@ export default function Editor({
               <span className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-500">
                 NEXUS EDITOR
               </span>
-              <span className="text-[9px] font-bold text-slate-400 uppercase">
-                Version 10.3 Platinum
-              </span>
+              <div className="flex items-center gap-2 mt-1">
+                {saveStatus === 'saving' && (
+                  <>
+                    <Loader2 size={10} className="animate-spin text-slate-400" />
+                    <span className="text-[9px] font-bold text-slate-400 uppercase">Saving Draft...</span>
+                  </>
+                )}
+                {saveStatus === 'saved' && (
+                  <>
+                    <CheckCircle2 size={10} className="text-green-500" />
+                    <span className="text-[9px] font-bold text-green-500 uppercase">All Changes Saved</span>
+                  </>
+                )}
+                {saveStatus === 'unsaved' && (
+                  <>
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                    <span className="text-[9px] font-bold text-amber-500 uppercase">Unsaved Changes</span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -1211,20 +1287,39 @@ export default function Editor({
             </div>
             <div className="space-y-5">
               <div className="space-y-2">
-                <p className="text-[9px] font-bold text-slate-400 ml-2">
-                  URL USERNAME
-                </p>
-                <input
-                  value={data.username}
-                  onChange={(e) =>
-                    setData({
-                      ...data,
-                      username: e.target.value,
-                    })
-                  }
-                  placeholder="yourname"
-                  className="w-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl px-5 py-4 text-sm font-black outline-none shadow-sm transition-all focus:border-indigo-500"
-                />
+                <div className="flex items-center justify-between">
+                  <p className="text-[9px] font-bold text-slate-400 ml-2">
+                    URL USERNAME
+                  </p>
+                  {usernameStatus === 'checking' && <Loader2 size={12} className="animate-spin text-indigo-500" />}
+                  {usernameStatus === 'available' && <span className="text-[9px] font-bold text-green-500">AVAILABLE</span>}
+                  {usernameStatus === 'taken' && <span className="text-[9px] font-bold text-red-500">TAKEN</span>}
+                </div>
+                <div className="relative">
+                  <input
+                    value={data.username}
+                    onChange={(e) =>
+                      setData({
+                        ...data,
+                        username: e.target.value.replace(/\s+/g, '-').toLowerCase(),
+                      })
+                    }
+                    placeholder="yourname"
+                    className={`w-full bg-white dark:bg-slate-900 border rounded-2xl px-5 py-4 text-sm font-black outline-none shadow-sm transition-all focus:ring-2 ${
+                      usernameStatus === 'taken' 
+                        ? "border-red-500 focus:ring-red-500/20 text-red-500" 
+                        : usernameStatus === 'available'
+                        ? "border-green-500 focus:ring-green-500/20"
+                        : "border-slate-100 dark:border-white/5 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    }`}
+                  />
+                  {usernameStatus === 'taken' && (
+                    <AlertCircle size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500" />
+                  )}
+                  {usernameStatus === 'available' && (
+                    <CheckCircle2 size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-green-500" />
+                  )}
+                </div>
               </div>
               <div className="space-y-2">
                 <p className="text-[9px] font-bold text-slate-400 ml-2">
@@ -1306,16 +1401,16 @@ export default function Editor({
         <div className="p-10 border-t border-slate-100 dark:border-white/5 bg-white dark:bg-slate-900 shrink-0">
           <button
             onClick={handleDeploy}
-            disabled={loading}
-            className="w-full py-6 bg-indigo-600 text-white rounded-[2rem] font-black text-[11px] uppercase tracking-[0.3em] shadow-[0_20px_50px_rgba(99,102,241,0.3)] transition-all active:scale-95 disabled:opacity-50 hover:bg-indigo-700"
+            disabled={loading || usernameStatus === 'taken' || !data.username}
+            className="w-full py-6 bg-indigo-600 text-white rounded-[2rem] font-black text-[11px] uppercase tracking-[0.3em] shadow-[0_20px_50px_rgba(99,102,241,0.3)] transition-all active:scale-95 disabled:opacity-50 hover:bg-indigo-700 flex items-center justify-center gap-2"
           >
             {loading ? (
-              <Loader2
-                className="animate-spin mx-auto"
-                size={24}
-              />
+              <Loader2 className="animate-spin" size={24} />
             ) : (
-              "DEPLOY YOUR IDENTITY"
+              <>
+                <Globe size={16} />
+                PUBLISH TO WEB
+              </>
             )}
           </button>
         </div>
