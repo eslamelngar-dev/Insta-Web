@@ -44,45 +44,95 @@ export const TEMPLATES_REGISTRY: Record<string, any> = {
     category: "Modern",
     description: "An interactive grid-based layout inspired by Apple's design language.",
     component: BentoTemplate,
-    features: ["tone"], 
+    features: ["tone"],
     defaultContent: {
       color: "#6366f1",
       theme_mode: "dark",
       blocks: [
-        { 
-          id: "b2", 
-          type: "social", 
-          colSpan: 1, 
-          rowSpan: 1, 
-          data: { platform: "github", url: "#" } 
+        {
+          id: "b1",
+          type: "profile",
+          colSpan: 2,
+          rowSpan: 2,
+          data: {
+            title: "Alex Morgan",
+            bio: "Product Designer & Creative Developer",
+            avatar_url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=300&h=300&fit=crop"
+          }
         },
-        { 
-          id: "b3", 
-          type: "link", 
-          colSpan: 1, 
-          rowSpan: 1, 
-          data: { label: "CV", url: "#", icon: "layout" } 
+        {
+          id: "b2",
+          type: "social",
+          colSpan: 1,
+          rowSpan: 1,
+          data: { platform: "github", url: "#" }
         },
-        { 
-          id: "b4", 
-          type: "image", 
-          colSpan: 1, 
-          rowSpan: 1, 
-          data: { image_url: "https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=500" } 
+        {
+          id: "b3",
+          type: "social",
+          colSpan: 1,
+          rowSpan: 1,
+          data: { platform: "x", url: "#" }
         },
-        { 
-          id: "b5", 
-          type: "text", 
-          colSpan: 1, 
-          rowSpan: 1, 
-          data: { title: "Location", body: "Remote / Global" } 
+        {
+          id: "b4",
+          type: "image",
+          colSpan: 2,
+          rowSpan: 1,
+          data: {
+            image_url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800&h=400&fit=crop"
+          }
         },
-        { 
-          id: "b6", 
-          type: "social", 
-          colSpan: 2, 
-          rowSpan: 1, 
-          data: { platform: "x", url: "#", label: "Follow my journey on X" } 
+        {
+          id: "b5",
+          type: "link",
+          colSpan: 1,
+          rowSpan: 1,
+          data: { label: "Portfolio", url: "#", icon: "layout" }
+        },
+        {
+          id: "b6",
+          type: "link",
+          colSpan: 1,
+          rowSpan: 1,
+          data: { label: "Resume", url: "#", icon: "code" }
+        },
+        {
+          id: "b7",
+          type: "social",
+          colSpan: 1,
+          rowSpan: 1,
+          data: { platform: "linkedin", url: "#" }
+        },
+        {
+          id: "b8",
+          type: "social",
+          colSpan: 1,
+          rowSpan: 1,
+          data: { platform: "instagram", url: "#" }
+        },
+        {
+          id: "b9",
+          type: "image",
+          colSpan: 2,
+          rowSpan: 2,
+          data: {
+            image_url: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&h=800&fit=crop"
+          }
+        },
+        {
+          id: "b10",
+          type: "link",
+          colSpan: 1,
+          rowSpan: 1,
+          data: { label: "Contact", url: "#", icon: "mail" }
+        },
+        {
+          id: "b11",
+          type: "link",
+          colSpan: 1,
+          rowSpan: 1,
+          data: { label: "Projects", url: "#", icon: "zap" }
         }
       ]
     }
