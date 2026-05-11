@@ -1,14 +1,26 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { LayoutDashboard, Globe, Settings, CreditCard, LogOut, Zap, Moon, Sun, Layout } from "lucide-react";
+import {
+  LayoutDashboard,
+  Globe,
+  Settings,
+  CreditCard,
+  LogOut,
+  Zap,
+  Moon,
+  Sun,
+  Layout,
+  Menu,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 
 const MENU_ITEMS = [
   { icon: LayoutDashboard, label: "My Sites", href: "/dashboard" },
-  { icon: Layout, label: "Templates", href: "/dashboard/templates" }, // القسم الجديد
+  { icon: Layout, label: "Templates", href: "/dashboard/templates" },
   { icon: Globe, label: "Domains", href: "/dashboard/domains" },
   { icon: CreditCard, label: "Billing", href: "/dashboard/billing" },
   { icon: Settings, label: "Settings", href: "/dashboard/settings" },
@@ -18,24 +30,55 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
 
-  return (
-    <aside className="w-72 h-screen border-r border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-slate-950 flex flex-col p-6 sticky top-0 transition-colors duration-300 z-50">
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMobileOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileOpen]);
+
+  const sidebarContent = (
+    <>
       <div className="flex items-center justify-between mb-12 px-2">
         <div className="flex items-center gap-3">
           <Zap className="text-indigo-500 fill-indigo-500" size={24} />
-          <span className="text-lg font-black tracking-tighter text-slate-900 dark:text-white uppercase">INSTAWEB</span>
+          <span className="text-lg font-black tracking-tighter text-slate-900 dark:text-white uppercase">
+            INSTAWEB
+          </span>
         </div>
-        
-        {/* زر تبديل المود */}
-        <button 
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-white/5 transition-colors border border-slate-200 dark:border-white/5 shadow-sm bg-white dark:bg-slate-900"
-        >
-          {mounted && (theme === "dark" ? <Sun size={16} className="text-indigo-400"/> : <Moon size={16} className="text-slate-600"/>)}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-white/5 transition-colors border border-slate-200 dark:border-white/5 shadow-sm bg-white dark:bg-slate-900"
+          >
+            {mounted &&
+              (theme === "dark" ? (
+                <Sun size={16} className="text-indigo-400" />
+              ) : (
+                <Moon size={16} className="text-slate-600" />
+              ))}
+          </button>
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-white/5 transition-colors lg:hidden"
+          >
+            <X size={20} className="text-slate-600 dark:text-slate-300" />
+          </button>
+        </div>
       </div>
 
       <nav className="flex-1 space-y-2">
@@ -46,9 +89,9 @@ export default function Sidebar() {
               key={item.label}
               href={item.href}
               className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-all ${
-                isActive 
-                ? "bg-indigo-600 text-white shadow-xl shadow-indigo-600/20 translate-x-1" 
-                : "text-slate-500 dark:text-slate-400 hover:bg-indigo-500/5 dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-white"
+                isActive
+                  ? "bg-indigo-600 text-white shadow-xl shadow-indigo-600/20 translate-x-1"
+                  : "text-slate-500 dark:text-slate-400 hover:bg-indigo-500/5 dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-white"
               }`}
             >
               <item.icon size={18} />
@@ -59,27 +102,63 @@ export default function Sidebar() {
       </nav>
 
       <div className="mt-auto space-y-4">
-        {/* بطاقة الخطة الحالية */}
         <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 p-5 rounded-[1.5rem] shadow-sm relative overflow-hidden group">
           <div className="absolute -top-4 -right-4 w-12 h-12 bg-indigo-600/10 rounded-full group-hover:scale-150 transition-transform duration-700" />
-          
-          <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-2">Current Tier</p>
+          <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-2">
+            Current Tier
+          </p>
           <div className="flex items-center gap-2 mb-4">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tighter">Early Access Free</p>
+            <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tighter">
+              Early Access Free
+            </p>
           </div>
-          
           <button className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/20">
             Upgrade to Pro
           </button>
         </div>
-        
-        {/* زر تسجيل الخروج */}
         <button className="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-all text-xs font-black uppercase tracking-widest w-full text-left group">
-          <LogOut size={18} className="group-hover:-translate-x-1 transition-transform" />
+          <LogOut
+            size={18}
+            className="group-hover:-translate-x-1 transition-transform"
+          />
           Sign Out
         </button>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200 dark:border-white/5 lg:hidden">
+        <div className="flex items-center gap-3">
+          <Zap className="text-indigo-500 fill-indigo-500" size={20} />
+          <span className="text-sm font-black tracking-tighter text-slate-900 dark:text-white uppercase">
+            INSTAWEB
+          </span>
+        </div>
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="p-2 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5"
+        >
+          <Menu size={20} className="text-slate-700 dark:text-slate-300" />
+        </button>
+      </div>
+
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      <aside
+        className={`fixed top-0 left-0 h-screen w-72 border-r border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-slate-950 flex flex-col p-6 z-[70] transition-transform duration-300 ease-in-out lg:sticky lg:top-0 lg:translate-x-0 ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {sidebarContent}
+      </aside>
+    </>
   );
 }
