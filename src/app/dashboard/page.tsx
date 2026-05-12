@@ -24,6 +24,7 @@ interface Site {
   username: string;
   primary_color: string;
   created_at: string;
+  is_published: boolean;
 }
 
 export default function Dashboard() {
@@ -50,6 +51,7 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchSites();
   }, [fetchSites]);
 
@@ -100,7 +102,7 @@ export default function Dashboard() {
           </div>
           <Link
             href="/dashboard/templates"
-            className="w-full sm:w-auto text-center px-6 sm:px-10 py-4 sm:py-5 bg-indigo-600 text-white rounded-2xl sm:rounded-[2rem] font-black text-xs uppercase tracking-widest shadow-2xl shadow-indigo-600/30 hover:bg-indigo-500 transition-all hover:-translate-y-1"
+            className="w-full sm:w-auto text-center px-6 sm:px-10 py-4 sm:py-5 bg-indigo-600 text-white rounded-2xl sm:rounded-4xl font-black text-xs uppercase tracking-widest shadow-2xl shadow-indigo-600/30 hover:bg-indigo-500 transition-all hover:-translate-y-1"
           >
             <Plus size={18} className="inline mr-2" />
             New Deployment
@@ -118,9 +120,9 @@ export default function Dashboard() {
             transition={{ duration: 0.6, ease: "easeOut" }}
             className="w-full relative group"
           >
-            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-indigo-500/20 rounded-2xl md:rounded-[3rem] blur-2xl opacity-50 group-hover:opacity-100 transition duration-1000" />
+            <div className="absolute -inset-1 bg-linear-to-r from-indigo-500/20 via-purple-500/20 to-indigo-500/20 rounded-2xl md:rounded-[3rem] blur-2xl opacity-50 group-hover:opacity-100 transition duration-1000" />
             <div className="relative w-full py-16 md:py-24 px-4 sm:px-6 md:px-12 flex flex-col items-center justify-center text-center bg-white dark:bg-slate-900 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-2xl md:rounded-[3rem] overflow-hidden z-10 shadow-sm">
-              <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none bg-[radial-gradient(#000_1px,transparent_1px)] dark:bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
+              <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none bg-[radial-gradient(#000_1px,transparent_1px)] dark:bg-[radial-gradient(#fff_1px,transparent_1px)] bg-size-[16px_16px]" />
               <div className="relative mb-8">
                 <div className="absolute inset-0 bg-indigo-500 blur-2xl opacity-20 dark:opacity-40 animate-pulse" />
                 <div className="w-20 h-20 md:w-24 md:h-24 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-white/5 rounded-full flex items-center justify-center relative shadow-xl">
@@ -144,7 +146,7 @@ export default function Dashboard() {
                 href="/dashboard/templates"
                 className="group relative inline-flex items-center gap-3 px-6 sm:px-8 py-3 sm:py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl sm:rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-xl hover:shadow-indigo-500/25 overflow-hidden"
               >
-                <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/20 dark:via-black/10 to-transparent skew-x-12" />
+                <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-linear-to-r from-transparent via-white/20 dark:via-black/10 to-transparent skew-x-12" />
                 Initialize First Node
                 <ArrowRight
                   size={16}
@@ -181,19 +183,34 @@ export default function Dashboard() {
                     >
                       <Layout size={28} />
                     </div>
-                    <button
-                      onClick={() => openDeleteModal(site)}
-                      className="p-2.5 sm:p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl sm:rounded-2xl transition-all"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+
+                    {/* ✨ إضافة البادج وحذف زر المسح بجانبه */}
+                    <div className="flex items-center gap-2">
+                      {site.is_published ? (
+                        <span className="px-3 py-1.5 bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-500/20 rounded-full text-[9px] font-black uppercase tracking-widest">
+                          Live
+                        </span>
+                      ) : (
+                        <span className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded-full text-[9px] font-black uppercase tracking-widest">
+                          Draft
+                        </span>
+                      )}
+                      <button
+                        onClick={() => openDeleteModal(site)}
+                        className="p-2 sm:p-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </div>
+
                   <h3 className="text-xl sm:text-2xl font-black mb-2 truncate tracking-tight uppercase">
                     {site.title}
                   </h3>
                   <p className="text-slate-400 text-[10px] mb-6 sm:mb-8 md:mb-10 font-bold uppercase tracking-widest truncate">
                     instaweb.me/{site.username}
                   </p>
+
                   <div className="flex gap-3 sm:gap-4">
                     <Link
                       href={`/dashboard/editor/${site.id}`}
@@ -201,14 +218,29 @@ export default function Dashboard() {
                     >
                       Edit Node
                     </Link>
-                    <a
-                      href={`/${site.username}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="p-3 sm:p-4 bg-slate-50 dark:bg-white/5 rounded-xl sm:rounded-2xl hover:bg-slate-100 dark:hover:bg-white/10 transition-all border border-slate-100 dark:border-white/5 text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                    >
-                      <ExternalLink size={18} />
-                    </a>
+
+                    {/* ✨ لو الموقع مسودة، زر الزيارة هيكون معطل */}
+                    {site.is_published ? (
+                      <a
+                        href={`/${site.username}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-3 sm:p-4 bg-slate-50 dark:bg-white/5 rounded-xl sm:rounded-2xl hover:bg-slate-100 dark:hover:bg-white/10 transition-all border border-slate-100 dark:border-white/5 text-slate-400 hover:text-slate-900 dark:hover:text-white group/link"
+                      >
+                        <ExternalLink
+                          size={18}
+                          className="group-hover/link:scale-110 transition-transform"
+                        />
+                      </a>
+                    ) : (
+                      <button
+                        disabled
+                        className="p-3 sm:p-4 bg-slate-50 dark:bg-white/5 rounded-xl sm:rounded-2xl border border-slate-100 dark:border-white/5 text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-50"
+                        title="Publish this site to view it"
+                      >
+                        <ExternalLink size={18} />
+                      </button>
+                    )}
                   </div>
                 </motion.div>
               ))}
@@ -219,7 +251,7 @@ export default function Dashboard() {
 
       <AnimatePresence>
         {isDeleteModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+          <div className="fixed inset-0 z-100 flex items-center justify-center p-4 sm:p-6">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -272,7 +304,7 @@ export default function Dashboard() {
               <button
                 onClick={handleDelete}
                 disabled={confirmName !== siteToDelete?.title || isDeleting}
-                className="w-full py-4 sm:py-5 bg-red-600 disabled:opacity-20 disabled:cursor-not-allowed text-white rounded-xl sm:rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] transition-all shadow-xl shadow-red-600/20 active:scale-95"
+                className="w-full py-4 sm:py-5 bg-red-600 disabled:opacity-20 disabled:cursor-not-allowed text-white rounded-xl sm:rounded-4xl font-black text-xs uppercase tracking-[0.3em] transition-all shadow-xl shadow-red-600/20 active:scale-95"
               >
                 {isDeleting ? "Wiping Data..." : "Confirm Termination"}
               </button>

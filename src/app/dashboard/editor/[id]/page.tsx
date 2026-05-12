@@ -1,7 +1,8 @@
+// src/app/dashboard/editor/[id]/page.tsx
 "use client";
 
 import React, { useState, useEffect, use, useRef, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Smartphone,
   Monitor,
@@ -29,6 +30,9 @@ import {
   EyeOff,
   AlertCircle,
   Pencil,
+  Save,
+  X,
+  FileText,
 } from "lucide-react";
 import NextImage from "next/image";
 import Link from "next/link";
@@ -193,8 +197,11 @@ interface SiteContent {
 
 interface SiteData {
   username: string;
+  title: string;
+  bio: string;
   template_id: string;
   content: SiteContent;
+  is_published: boolean;
 }
 
 interface SortableBlockItemProps {
@@ -405,6 +412,122 @@ function SortableBlockItem({
   );
 }
 
+function ConfirmModal({
+  isOpen,
+  onClose,
+  onSaveAsDraft,
+  onPublish,
+  loading,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSaveAsDraft: () => void;
+  onPublish: () => void;
+  loading: boolean;
+}) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+          />
+
+          {/* Modal */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          >
+            <div className="bg-white dark:bg-slate-900 rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-10 max-w-md w-full shadow-2xl border border-slate-100 dark:border-white/5 relative">
+              {/* Close Button */}
+              <button
+                onClick={onClose}
+                className="absolute top-4 right-4 sm:top-6 sm:right-6 p-2 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-all text-slate-400"
+              >
+                <X size={18} />
+              </button>
+
+              {/* Icon */}
+              <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-2xl sm:rounded-3xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center mb-6 sm:mb-8 shadow-xl shadow-indigo-500/30">
+                <Save size={28} className="text-white" />
+              </div>
+
+              {/* Title */}
+              <h2 className="text-lg sm:text-xl font-black text-center text-slate-900 dark:text-white mb-2">
+                How would you like to save?
+              </h2>
+              <p className="text-xs sm:text-sm text-center text-slate-400 mb-8 sm:mb-10 leading-relaxed">
+                Choose to save as a draft for later editing, or publish directly
+                to make it live on the web.
+              </p>
+
+              {/* Actions */}
+              <div className="space-y-3 sm:space-y-4">
+                {/* Save as Draft */}
+                <button
+                  onClick={onSaveAsDraft}
+                  disabled={loading}
+                  className="w-full py-4 sm:py-5 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 rounded-xl sm:rounded-2xl font-black text-[10px] sm:text-[11px] uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 border border-slate-200 dark:border-white/5 disabled:opacity-50 group"
+                >
+                  {loading ? (
+                    <Loader2 className="animate-spin" size={20} />
+                  ) : (
+                    <>
+                      <FileText
+                        size={18}
+                        className="text-amber-500 group-hover:scale-110 transition-transform"
+                      />
+                      <span>Save as Draft</span>
+                      <span className="text-[8px] font-bold text-slate-400 bg-slate-200 dark:bg-white/10 px-2 py-0.5 rounded-full ml-1">
+                        NOT LIVE
+                      </span>
+                    </>
+                  )}
+                </button>
+
+                {/* Publish */}
+                <button
+                  onClick={onPublish}
+                  disabled={loading}
+                  className="w-full py-4 sm:py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl sm:rounded-2xl font-black text-[10px] sm:text-[11px] uppercase tracking-[0.2em] shadow-[0_15px_40px_rgba(99,102,241,0.3)] transition-all flex items-center justify-center gap-3 disabled:opacity-50 group"
+                >
+                  {loading ? (
+                    <Loader2 className="animate-spin" size={20} />
+                  ) : (
+                    <>
+                      <Globe
+                        size={18}
+                        className="group-hover:scale-110 transition-transform"
+                      />
+                      <span>Publish to Web</span>
+                      <span className="text-[8px] font-bold text-indigo-200 bg-indigo-500/30 px-2 py-0.5 rounded-full ml-1">
+                        LIVE
+                      </span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Hint */}
+              <p className="text-[9px] text-center text-slate-400 mt-5 sm:mt-6">
+                Drafts are saved automatically. You can publish anytime later.
+              </p>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
 export default function Editor({
   params,
 }: {
@@ -425,12 +548,16 @@ export default function Editor({
   const [usernameStatus, setUsernameStatus] = useState<
     "idle" | "checking" | "available" | "taken"
   >("idle");
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const initialLoad = useRef(true);
 
   const [data, setData] = useState<SiteData>({
     username: "",
+    title: "",
+    bio: "",
     template_id: "classic",
     content: {},
+    is_published: false,
   });
 
   const effectiveUsernameStatus =
@@ -450,7 +577,14 @@ export default function Editor({
           TEMPLATES_REGISTRY[templateId]?.defaultContent ??
           TEMPLATES_REGISTRY.classic.defaultContent;
         const freshCopy = JSON.parse(JSON.stringify(rawDefault)) as SiteContent;
-        setData({ username: "", template_id: templateId, content: freshCopy });
+        setData({
+          username: "",
+          title: "",
+          bio: "",
+          template_id: templateId,
+          content: freshCopy,
+          is_published: false,
+        });
       } else {
         const { data: site } = await supabase
           .from("sites")
@@ -460,8 +594,11 @@ export default function Editor({
         if (site) {
           setData({
             username: site.username ?? "",
+            title: site.title ?? "",
+            bio: site.bio ?? "",
             template_id: site.template_id ?? "classic",
             content: (site.content as SiteContent) ?? {},
+            is_published: site.is_published ?? false,
           });
         }
       }
@@ -494,7 +631,7 @@ export default function Editor({
   }, [data.username, id]);
 
   const saveToDatabase = useCallback(
-    async (showToast = false) => {
+    async (showToast = false, publishMode: "draft" | "publish" = "publish") => {
       setSaveStatus("saving");
 
       try {
@@ -525,6 +662,7 @@ export default function Editor({
           bio: data.content.bio ?? data.content.hero?.subtitle ?? "",
           primary_color: data.content.color ?? "#6366f1",
           theme_mode: data.content.theme_mode ?? "light",
+          is_published: publishMode === "publish",
         };
 
         const { error } = await supabase.from("sites").upsert(payload);
@@ -533,10 +671,25 @@ export default function Editor({
           throw error;
         }
 
+        setData((prev) => ({
+          ...prev,
+          is_published: publishMode === "publish",
+        }));
         setSaveStatus("saved");
 
         if (showToast) {
-          toast.success("Deployment Successful!");
+          if (publishMode === "draft") {
+            toast.success("Saved as Draft Successfully!", {
+              description:
+                "You can publish it anytime later from the dashboard.",
+              icon: <FileText size={18} className="text-amber-500" />,
+            });
+          } else {
+            toast.success("Published Successfully!", {
+              description: "Your site is now live on the web.",
+              icon: <Globe size={18} className="text-green-500" />,
+            });
+          }
           router.push("/dashboard");
         }
       } catch (err: unknown) {
@@ -560,11 +713,17 @@ export default function Editor({
     setSaveStatus("unsaved");
 
     const timer = setTimeout(() => {
-      saveToDatabase(false);
+      saveToDatabase(false, data.is_published ? "publish" : "draft");
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [data.content, data.username, data.template_id, saveToDatabase]);
+  }, [
+    data.content,
+    data.username,
+    data.template_id,
+    data.is_published,
+    saveToDatabase,
+  ]);
 
   const updateContent = (updates: Partial<SiteContent>) =>
     setData((prev) => ({
@@ -630,15 +789,33 @@ export default function Editor({
     }
   };
 
-  const handleDeploy = async () => {
+  /* ════════════════════════════════════════════
+     ★  Save / Publish Handlers
+     ════════════════════════════════════════════ */
+  const handleSaveClick = () => {
     if (effectiveUsernameStatus === "taken") {
-      toast.error("Please choose an available username before deploying.");
+      toast.error("Please choose an available username before saving.");
       return;
     }
+    if (!data.username) {
+      toast.error("Please enter a username first.");
+      return;
+    }
+    setShowConfirmModal(true);
+  };
 
+  const handleSaveAsDraft = async () => {
     setLoading(true);
-    await saveToDatabase(true);
+    await saveToDatabase(true, "draft");
     setLoading(false);
+    setShowConfirmModal(false);
+  };
+
+  const handlePublish = async () => {
+    setLoading(true);
+    await saveToDatabase(true, "publish");
+    setLoading(false);
+    setShowConfirmModal(false);
   };
 
   const toggleSection = (sectionName: string) => {
@@ -1324,7 +1501,7 @@ export default function Editor({
       <div className="p-4 sm:p-6 lg:p-8 border-b border-slate-100 dark:border-white/5 flex items-center justify-between bg-white dark:bg-slate-900/50 shrink-0">
         <div className="flex items-center gap-3 sm:gap-4">
           <Link
-            href="/dashboard"
+            href="/dashboard/templates"
             className="p-2.5 sm:p-3 bg-slate-50 dark:bg-white/5 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 rounded-xl sm:rounded-2xl transition-all"
           >
             <ChevronLeft
@@ -1360,6 +1537,17 @@ export default function Editor({
                     Unsaved
                   </span>
                 </>
+              )}
+
+              {/* Status Badge */}
+              {data.is_published ? (
+                <span className="ml-2 text-[8px] font-black uppercase bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <Globe size={8} /> Live
+                </span>
+              ) : (
+                <span className="ml-2 text-[8px] font-black uppercase bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <FileText size={8} /> Draft
+                </span>
               )}
             </div>
           </div>
@@ -1490,9 +1678,10 @@ export default function Editor({
             : renderStandardControls()}
       </div>
 
+      {/* ═══ Bottom Save Button ═══ */}
       <div className="p-4 sm:p-6 lg:p-10 border-t border-slate-100 dark:border-white/5 bg-white dark:bg-slate-900 shrink-0">
         <button
-          onClick={handleDeploy}
+          onClick={handleSaveClick}
           disabled={
             loading || effectiveUsernameStatus === "taken" || !data.username
           }
@@ -1502,8 +1691,8 @@ export default function Editor({
             <Loader2 className="animate-spin" size={24} />
           ) : (
             <>
-              <Globe size={16} />
-              PUBLISH TO WEB
+              <Save size={16} />
+              SAVE & DEPLOY
             </>
           )}
         </button>
@@ -1513,6 +1702,15 @@ export default function Editor({
 
   return (
     <>
+      {/* ═══ Confirmation Modal ═══ */}
+      <ConfirmModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onSaveAsDraft={handleSaveAsDraft}
+        onPublish={handlePublish}
+        loading={loading}
+      />
+
       <div className="h-screen bg-white dark:bg-slate-950 hidden lg:flex overflow-hidden text-slate-900 dark:text-white transition-colors duration-500 font-sans">
         <aside className="w-120 border-r border-slate-100 dark:border-white/5 flex flex-col bg-slate-50/30 dark:bg-slate-900/30 backdrop-blur-3xl overflow-hidden shadow-2xl z-30">
           {editorPanel}

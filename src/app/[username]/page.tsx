@@ -4,7 +4,7 @@ import SiteRenderer from "@/components/SiteRenderer";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
 );
 
 export default async function UserSite({
@@ -19,12 +19,11 @@ export default async function UserSite({
     .eq("username", username)
     .single();
 
-  if (!site) notFound();
+  if (!site || !site.is_published) {
+    notFound();
+  }
 
   return (
-    <SiteRenderer
-      site={site}
-      templateId={site.template_id || "classic"}
-    />
+    <SiteRenderer site={site} templateId={site.template_id || "classic"} />
   );
 }

@@ -1,9 +1,17 @@
+// src/components/templates/BentoTemplate.tsx
 "use client";
 
 import React from "react";
 import { motion } from "framer-motion";
 import type { Variants } from "framer-motion";
 import { ExternalLink, Globe } from "lucide-react";
+import Image from "next/image";
+import {
+  TemplateProps,
+  Block,
+  SiteData,
+  SiteContent,
+} from "@/types";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -17,29 +25,24 @@ const containerVariants: Variants = {
 };
 
 const blockVariants: Variants = {
-  hidden: {
-    opacity: 0,
-    scale: 0.8,
-    y: 30,
-    filter: "blur(10px)",
-  },
+  hidden: { opacity: 0, scale: 0.8, y: 30, filter: "blur(10px)" },
   visible: {
     opacity: 1,
     scale: 1,
     y: 0,
     filter: "blur(0px)",
-    transition: {
-      type: "spring",
-      stiffness: 200,
-      damping: 20,
-      mass: 0.8,
-    },
+    transition: { type: "spring", stiffness: 200, damping: 20, mass: 0.8 },
   },
 };
 
-export default function BentoTemplate({ site, Icons, BtnIcons }: any) {
-  const content = site.content || site;
-  const primaryColor = content.color || site.primary_color || "#f43f5e";
+export default function BentoTemplate({
+  site,
+  Icons,
+  BtnIcons,
+}: TemplateProps) {
+  const siteData = site as SiteData;
+  const content = (siteData.content || siteData) as unknown as SiteContent;
+  const primaryColor = content.color || siteData.primary_color || "#f43f5e";
   const isTemplateDark = content.theme_mode === "dark";
 
   const boxBg = isTemplateDark
@@ -51,9 +54,7 @@ export default function BentoTemplate({ site, Icons, BtnIcons }: any) {
   return (
     <div
       className="@container w-full h-full overflow-y-auto custom-scroll transition-colors duration-500 p-3 @[768px]:p-8"
-      style={{
-        backgroundColor: isTemplateDark ? "#0d1117" : "#f8fafc",
-      }}
+      style={{ backgroundColor: isTemplateDark ? "#0d1117" : "#f8fafc" }}
     >
       <motion.div
         variants={containerVariants}
@@ -61,10 +62,9 @@ export default function BentoTemplate({ site, Icons, BtnIcons }: any) {
         animate="visible"
         className="max-w-4xl mx-auto grid grid-cols-2 @[768px]:grid-cols-4 gap-3 @[768px]:gap-4 pb-24 auto-rows-min"
       >
-        {content.blocks?.map((block: any) => {
+        {content.blocks?.map((block: Block) => {
           const isWide = block.colSpan === 2;
           const isTall = block.rowSpan === 2;
-
           let spanClass = "";
           let aspectClass = "";
 
@@ -82,7 +82,7 @@ export default function BentoTemplate({ site, Icons, BtnIcons }: any) {
             aspectClass = "aspect-square";
           }
 
-          const baseClasses = `${spanClass} ${aspectClass} rounded-[2rem] border ${boxBg} relative overflow-hidden shadow-sm flex flex-col`;
+          const baseClasses = `${spanClass} ${aspectClass} rounded-4xl border ${boxBg} relative overflow-hidden shadow-sm flex flex-col`;
 
           if (block.type === "profile") {
             return (
@@ -101,19 +101,20 @@ export default function BentoTemplate({ site, Icons, BtnIcons }: any) {
                 />
                 <div className="relative z-10 flex flex-col items-center text-center">
                   <motion.div
-                    className="mb-3 @[768px]:mb-4"
+                    className="mb-3 @[768px]:mb-4 relative w-14 h-14 @[768px]:w-24 @[768px]:h-24"
                     whileHover={{ scale: 1.1, rotate: 3 }}
                     transition={{ type: "spring", stiffness: 300 }}
                   >
                     {block.data.avatar_url ? (
-                      <img
+                      <Image
                         src={block.data.avatar_url}
-                        className="w-14 h-14 @[768px]:w-24 @[768px]:h-24 rounded-2xl object-cover border-2 @[768px]:border-4 border-white dark:border-slate-800 shadow-xl"
-                        alt={block.data.title}
+                        alt={block.data.title || "Avatar"}
+                        fill
+                        className="rounded-2xl object-cover border-2 @[768px]:border-4 border-white dark:border-slate-800 shadow-xl"
                       />
                     ) : (
                       <div
-                        className="w-14 h-14 @[768px]:w-24 @[768px]:h-24 rounded-2xl flex items-center justify-center text-xl @[768px]:text-3xl font-black text-white border-2 @[768px]:border-4 border-white dark:border-slate-800 shadow-xl"
+                        className="w-full h-full rounded-2xl flex items-center justify-center text-xl @[768px]:text-3xl font-black text-white border-2 @[768px]:border-4 border-white dark:border-slate-800 shadow-xl"
                         style={{ backgroundColor: primaryColor }}
                       >
                         {block.data.title?.charAt(0) || "U"}
@@ -137,7 +138,7 @@ export default function BentoTemplate({ site, Icons, BtnIcons }: any) {
           }
 
           if (block.type === "link") {
-            const BIcon = BtnIcons?.[block.data.icon] || ExternalLink;
+            const BIcon = BtnIcons?.[block.data.icon || ""] || ExternalLink;
             return (
               <motion.a
                 key={block.id}
@@ -161,7 +162,10 @@ export default function BentoTemplate({ site, Icons, BtnIcons }: any) {
                         : "border-slate-100 bg-slate-50"
                     } ${textColor}`}
                   >
-                    <BIcon className="w-4 h-4 @[768px]:w-6 @[768px]:h-6" />
+                    <BIcon
+                      size={24}
+                      className="w-4 h-4 @[768px]:w-6 @[768px]:h-6"
+                    />
                   </motion.div>
                   <motion.div
                     initial={{ opacity: 0, x: -10 }}
@@ -204,14 +208,19 @@ export default function BentoTemplate({ site, Icons, BtnIcons }: any) {
               >
                 {block.data.image_url ? (
                   <>
-                    <motion.img
-                      src={block.data.image_url}
-                      className="w-full h-full object-cover"
-                      alt="content"
+                    <motion.div
+                      className="relative w-full h-full"
                       whileHover={{ scale: 1.08 }}
                       transition={{ duration: 0.6, ease: "easeOut" }}
-                    />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-500" />
+                    >
+                      <Image
+                        src={block.data.image_url}
+                        alt="content"
+                        fill
+                        className="object-cover"
+                      />
+                    </motion.div>
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-500 pointer-events-none" />
                   </>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
@@ -227,7 +236,7 @@ export default function BentoTemplate({ site, Icons, BtnIcons }: any) {
           }
 
           if (block.type === "social") {
-            const Icon = Icons?.[block.data.platform] || Globe;
+            const Icon = Icons?.[block.data.platform || ""] || Globe;
             return (
               <motion.a
                 key={block.id}
@@ -251,6 +260,7 @@ export default function BentoTemplate({ site, Icons, BtnIcons }: any) {
                   }`}
                 >
                   <Icon
+                    size={32}
                     className={`w-5 h-5 @[768px]:w-8 @[768px]:h-8 ${textColor}`}
                   />
                 </motion.div>

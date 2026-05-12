@@ -1,15 +1,19 @@
+// src/components/templates/NexusLandingTemplate.tsx
 "use client";
 
 import React from "react";
 import { motion } from "framer-motion";
+import Image from "next/image";
+import { ExternalLink, CheckCircle2, ArrowRight, Star } from "lucide-react";
 import {
-  ExternalLink,
-  CheckCircle2,
-  ArrowRight,
-  Star,
-} from "lucide-react";
+  TemplateProps,
+  SiteData,
+  SiteContent,
+  Feature,
+  PortfolioItem,
+} from "@/types";
 
-const GithubIcon = (props: any) => (
+const GithubIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
     width="14"
     height="14"
@@ -21,23 +25,24 @@ const GithubIcon = (props: any) => (
   </svg>
 );
 
-export default function NexusLandingTemplate({
-  site,
-  isDark,
-}: any) {
-  const content = site.content || site;
+export default function NexusLandingTemplate({ site }: TemplateProps) {
+  const siteData = site as SiteData;
+  const content = (siteData.content || siteData) as unknown as SiteContent;
   const primaryColor = content.color || "#6366f1";
   const isTemplateDark = content.theme_mode === "dark";
   const show = content.sections_visibility || {};
+
   const bgClass = isTemplateDark
     ? "bg-[#050505] text-white"
     : "bg-white text-slate-900";
   const cardBg = isTemplateDark
-    ? "bg-white/[0.03] border-white/10"
+    ? "bg-white/5 border-white/10"
     : "bg-slate-50 border-slate-200";
 
   const scrollToContact = () => {
-    document.getElementById("nexus-contact")?.scrollIntoView({ behavior: "smooth" });
+    document
+      .getElementById("nexus-contact")
+      ?.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
@@ -96,7 +101,7 @@ export default function NexusLandingTemplate({
               />
             </div>
             <div className="grid grid-cols-1 @[768px]:grid-cols-3 gap-6">
-              {(content.features || []).map((f: any, i: number) => (
+              {(content.features || []).map((f: Feature, i: number) => (
                 <div
                   key={i}
                   className={`p-8 rounded-[2.5rem] border ${cardBg} group hover:-translate-y-2 transition-all`}
@@ -125,7 +130,7 @@ export default function NexusLandingTemplate({
       )}
 
       {show.portfolio !== false && (
-        <section className="px-6 py-24 bg-current/[0.02]">
+        <section className="px-6 py-24 bg-current/2">
           <div className="max-w-6xl mx-auto">
             <div className="flex flex-col @[768px]:flex-row @[768px]:items-end justify-between mb-16 gap-6">
               <h2 className="text-2xl @[768px]:text-5xl font-black uppercase tracking-tighter leading-none">
@@ -136,13 +141,15 @@ export default function NexusLandingTemplate({
               </p>
             </div>
             <div className="grid grid-cols-1 @[768px]:grid-cols-2 gap-8">
-              {(content.portfolio || []).map((p: any, i: number) => (
+              {(content.portfolio || []).map((p: PortfolioItem, i: number) => (
                 <div key={i} className="group cursor-pointer">
-                  <div className="aspect-[16/10] rounded-[3rem] overflow-hidden mb-6 border border-white/5 bg-slate-800 relative">
+                  <div className="relative aspect-16/10 rounded-[3rem] overflow-hidden mb-6 border border-white/5 bg-slate-800">
                     {p.image ? (
-                      <img
+                      <Image
                         src={p.image}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                        alt={p.title || "Project"}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-700"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-white/10 font-black text-4xl italic uppercase">
@@ -199,12 +206,7 @@ export default function NexusLandingTemplate({
           <div className="max-w-4xl mx-auto text-center">
             <div className="flex justify-center gap-1 mb-8">
               {[1, 2, 3, 4, 5].map((s) => (
-                <Star
-                  key={s}
-                  size={16}
-                  fill={primaryColor}
-                  stroke="none"
-                />
+                <Star key={s} size={16} fill={primaryColor} stroke="none" />
               ))}
             </div>
             <blockquote className="text-xl @[768px]:text-3xl font-bold italic mb-10 leading-snug">
@@ -226,7 +228,10 @@ export default function NexusLandingTemplate({
       )}
 
       {show.contact !== false && (
-        <footer id="nexus-contact" className="px-6 py-24 text-center border-t border-white/5">
+        <footer
+          id="nexus-contact"
+          className="px-6 py-24 text-center border-t border-white/5"
+        >
           <h2 className="text-3xl @[768px]:text-6xl font-black uppercase tracking-tighter mb-12">
             Ready to start?
           </h2>
