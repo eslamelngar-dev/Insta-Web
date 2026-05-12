@@ -50,7 +50,7 @@ export default function NexusLandingTemplate({ site }: TemplateProps) {
       className={`@container w-full h-full overflow-y-auto custom-scroll selection:bg-indigo-500/30 ${bgClass}`}
     >
       {show.hero !== false && (
-        <section className="relative px-6 pt-20 pb-32 text-center overflow-hidden">
+        <section className="relative px-6 min-h-[85vh] flex flex-col items-center justify-center text-center overflow-hidden py-20">
           <div
             className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full opacity-20 blur-[120px] pointer-events-none"
             style={{
@@ -60,25 +60,25 @@ export default function NexusLandingTemplate({ site }: TemplateProps) {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative z-10 max-w-4xl mx-auto"
+            className="relative z-10 max-w-5xl mx-auto w-full"
           >
             <span
-              className="inline-block px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.3em] mb-6 border border-current opacity-50"
+              className="inline-block px-5 py-2 rounded-full text-[10px] @[768px]:text-xs font-black uppercase tracking-[0.3em] mb-8 border border-current opacity-60 backdrop-blur-sm"
               style={{ color: primaryColor }}
             >
               {content.hero?.tagline || "Available for Projects"}
             </span>
-            <h1 className="text-4xl @[768px]:text-7xl font-black tracking-tighter uppercase mb-6 leading-[0.9]">
+            <h1 className="text-5xl @[480px]:text-6xl @[768px]:text-8xl @[1024px]:text-9xl font-black tracking-tighter uppercase mb-8 leading-[0.85] drop-shadow-sm">
               {content.hero?.title || "Digital Experiences That Matter"}
             </h1>
-            <p className="text-sm @[768px]:text-lg opacity-60 max-w-2xl mx-auto mb-10 font-medium leading-relaxed">
+            <p className="text-base @[768px]:text-xl @[1024px]:text-2xl opacity-60 max-w-3xl mx-auto mb-12 font-medium leading-relaxed">
               {content.hero?.subtitle ||
                 "We build high-performance products that help you scale your business to the next level."}
             </p>
             <div className="flex flex-col @[480px]:flex-row items-center justify-center gap-4">
               <button
                 onClick={scrollToContact}
-                className="px-8 py-4 rounded-full font-black text-xs uppercase tracking-widest text-white shadow-2xl transition-transform hover:scale-105"
+                className="px-10 py-5 rounded-full font-black text-sm uppercase tracking-widest text-white shadow-2xl transition-all hover:scale-105 hover:shadow-current/25"
                 style={{ backgroundColor: primaryColor }}
               >
                 Get Started Now

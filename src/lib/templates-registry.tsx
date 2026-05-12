@@ -140,7 +140,7 @@ export const TEMPLATES_REGISTRY: Record<string, TemplateConfig> = {
   nexus: {
     id: "nexus",
     name: "Nexus Landing",
-    category: "Business",
+    category: "Portfolio",
     description:
       "High-end landing page with structured sections for businesses and agencies.",
     component: NexusLandingTemplate,
@@ -217,7 +217,7 @@ export const TEMPLATES_REGISTRY: Record<string, TemplateConfig> = {
   glass: {
     id: "glass",
     name: "Glassmorphism",
-    category: "Creator",
+    category: "Social Card",
     description: "Modern frosted glass effect with blur aesthetics.",
     component: GlassTemplate,
     features: ["cover", "avatar", "tone", "baseInfo", "social", "links"],
@@ -243,7 +243,7 @@ export const TEMPLATES_REGISTRY: Record<string, TemplateConfig> = {
   terminal: {
     id: "terminal",
     name: "Developer CLI",
-    category: "Portfolio",
+    category: "Social Card",
     description: "For the coders. Command-line interface aesthetic.",
     component: TerminalTemplate,
     features: ["avatar", "tone", "baseInfo", "social", "links"],
@@ -267,7 +267,7 @@ export const TEMPLATES_REGISTRY: Record<string, TemplateConfig> = {
   notion: {
     id: "notion",
     name: "Notion Document",
-    category: "Portfolio",
+    category: "Social Card",
     description: "Clean, document-style layout with a cover image.",
     component: NotionTemplate,
     features: ["cover", "avatar", "tone", "baseInfo", "social", "links"],
