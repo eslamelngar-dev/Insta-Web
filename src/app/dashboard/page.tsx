@@ -13,6 +13,8 @@ import {
   Sparkles,
   Layers,
   ArrowRight,
+  Activity,
+  Pencil,
 } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
@@ -93,7 +95,7 @@ export default function Dashboard() {
       <div className="max-w-7xl mx-auto">
         <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-10 md:mb-16 gap-4 sm:gap-6">
           <div>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter uppercase">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter uppercase bg-clip-text text-transparent bg-linear-to-r from-indigo-500 to-purple-600">
               Dashboard
             </h2>
             <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium uppercase text-[10px] tracking-[0.3em]">
@@ -158,92 +160,106 @@ export default function Dashboard() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
             <AnimatePresence>
-              {sites.map((site) => (
-                <motion.div
-                  key={site.id}
-                  layout
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  className="bg-white dark:bg-slate-900 p-6 sm:p-8 md:p-10 rounded-2xl sm:rounded-[2.5rem] md:rounded-[3rem] border border-slate-200 dark:border-white/5 shadow-sm hover:shadow-xl transition-shadow group relative overflow-hidden"
-                >
-                  <div
-                    className="absolute top-0 left-0 w-full h-1.5 opacity-80 group-hover:opacity-100 transition-opacity"
-                    style={{
-                      backgroundColor: site.primary_color || "#4f46e5",
-                    }}
-                  />
-                  <div className="flex justify-between items-start mb-6 sm:mb-8 md:mb-10">
+              {sites.map((site) => {
+                // ✨ تعريف اللون الخاص بالمشروع هنا عشان نستخدمه في اللوجو والخط
+                const siteColor = site.primary_color || "#6366f1";
+
+                return (
+                  <motion.div
+                    key={site.id}
+                    layout
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    className="bg-white dark:bg-slate-900 p-6 sm:p-8 md:p-10 rounded-2xl sm:rounded-[2.5rem] md:rounded-[3rem] border border-slate-200 dark:border-white/5 shadow-sm hover:shadow-xl transition-shadow group relative overflow-hidden flex flex-col"
+                  >
+                    {/* ✨ الخط الملون فوق اللي بياخد لون المشروع مع توهج خفيف */}
                     <div
-                      className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-2xl md:rounded-3xl flex items-center justify-center shadow-inner"
+                      className="absolute top-0 left-0 w-full h-1.5 opacity-90 group-hover:h-2 transition-all duration-300 z-10"
                       style={{
-                        backgroundColor: `${site.primary_color || "#4f46e5"}10`,
-                        color: site.primary_color || "#4f46e5",
+                        backgroundColor: siteColor,
+                        boxShadow: `0 0 15px ${siteColor}80`,
                       }}
-                    >
-                      <Layout size={28} />
+                    />
+                    <div className="flex justify-between items-start mb-6 sm:mb-8 md:mb-10">
+                      {/* ✨ أيقونة اللوجو الملونة */}
+                      <div
+                        className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-2xl md:rounded-3xl flex items-center justify-center transition-transform group-hover:scale-110 duration-300"
+                        style={{
+                          backgroundColor: `${siteColor}15`,
+                          color: siteColor,
+                          boxShadow: `inset 0 0 20px ${siteColor}05`,
+                        }}
+                      >
+                        <Layout size={28} />
+                      </div>
+
+                      <div className="flex items-center gap-2 relative z-20">
+                        {site.is_published ? (
+                          <span className="px-3 py-1.5 bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-500/20 rounded-full text-[9px] font-black uppercase tracking-widest">
+                            Live
+                          </span>
+                        ) : (
+                          <span className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded-full text-[9px] font-black uppercase tracking-widest">
+                            Draft
+                          </span>
+                        )}
+                        <button
+                          onClick={() => openDeleteModal(site)}
+                          className="p-2 sm:p-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
                     </div>
 
-                    {/* ✨ إضافة البادج وحذف زر المسح بجانبه */}
-                    <div className="flex items-center gap-2">
+                    <h3 className="text-xl sm:text-2xl font-black mb-2 truncate tracking-tight uppercase relative z-20">
+                      {site.title}
+                    </h3>
+                    <p className="text-slate-400 text-[10px] mb-6 sm:mb-8 font-bold uppercase tracking-widest truncate flex-1 relative z-20">
+                      instaweb.me/{site.username}
+                    </p>
+
+                    <div className="flex gap-2 sm:gap-3 mt-auto relative z-20">
+                      <Link
+                        href={`/dashboard/editor/${site.id}`}
+                        className="flex-1 py-3 sm:py-4 bg-slate-50 dark:bg-white/5 rounded-xl text-center text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white hover:border-indigo-600 dark:hover:bg-indigo-600 transition-all border border-slate-100 dark:border-white/5 flex items-center justify-center gap-1.5"
+                      >
+                        <Pencil size={14} /> Edit
+                      </Link>
+
+                      <Link
+                        href={`/dashboard/analytics/${site.id}`}
+                        className="flex-1 py-3 sm:py-4 bg-slate-50 dark:bg-white/5 rounded-xl text-center text-[10px] font-black uppercase tracking-widest hover:bg-purple-600 hover:text-white hover:border-purple-600 dark:hover:bg-purple-600 transition-all border border-slate-100 dark:border-white/5 flex items-center justify-center gap-1.5"
+                      >
+                        <Activity size={14} /> Stats
+                      </Link>
+
                       {site.is_published ? (
-                        <span className="px-3 py-1.5 bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-500/20 rounded-full text-[9px] font-black uppercase tracking-widest">
-                          Live
-                        </span>
+                        <a
+                          href={`/${site.username}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="p-3 sm:p-4 bg-slate-50 dark:bg-white/5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 transition-all border border-slate-100 dark:border-white/5 text-slate-400 hover:text-slate-900 dark:hover:text-white group/link shrink-0"
+                        >
+                          <ExternalLink
+                            size={18}
+                            className="group-hover/link:scale-110 transition-transform"
+                          />
+                        </a>
                       ) : (
-                        <span className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded-full text-[9px] font-black uppercase tracking-widest">
-                          Draft
-                        </span>
+                        <button
+                          disabled
+                          className="p-3 sm:p-4 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/5 text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-50 shrink-0"
+                          title="Publish this site to view it"
+                        >
+                          <ExternalLink size={18} />
+                        </button>
                       )}
-                      <button
-                        onClick={() => openDeleteModal(site)}
-                        className="p-2 sm:p-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all"
-                      >
-                        <Trash2 size={18} />
-                      </button>
                     </div>
-                  </div>
-
-                  <h3 className="text-xl sm:text-2xl font-black mb-2 truncate tracking-tight uppercase">
-                    {site.title}
-                  </h3>
-                  <p className="text-slate-400 text-[10px] mb-6 sm:mb-8 md:mb-10 font-bold uppercase tracking-widest truncate">
-                    instaweb.me/{site.username}
-                  </p>
-
-                  <div className="flex gap-3 sm:gap-4">
-                    <Link
-                      href={`/dashboard/editor/${site.id}`}
-                      className="flex-1 py-3 sm:py-4 bg-slate-50 dark:bg-white/5 rounded-xl sm:rounded-2xl text-center text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white hover:border-indigo-600 dark:hover:bg-indigo-600 transition-all border border-slate-100 dark:border-white/5"
-                    >
-                      Edit Node
-                    </Link>
-
-                    {/* ✨ لو الموقع مسودة، زر الزيارة هيكون معطل */}
-                    {site.is_published ? (
-                      <a
-                        href={`/${site.username}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="p-3 sm:p-4 bg-slate-50 dark:bg-white/5 rounded-xl sm:rounded-2xl hover:bg-slate-100 dark:hover:bg-white/10 transition-all border border-slate-100 dark:border-white/5 text-slate-400 hover:text-slate-900 dark:hover:text-white group/link"
-                      >
-                        <ExternalLink
-                          size={18}
-                          className="group-hover/link:scale-110 transition-transform"
-                        />
-                      </a>
-                    ) : (
-                      <button
-                        disabled
-                        className="p-3 sm:p-4 bg-slate-50 dark:bg-white/5 rounded-xl sm:rounded-2xl border border-slate-100 dark:border-white/5 text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-50"
-                        title="Publish this site to view it"
-                      >
-                        <ExternalLink size={18} />
-                      </button>
-                    )}
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                );
+              })}
             </AnimatePresence>
           </div>
         )}

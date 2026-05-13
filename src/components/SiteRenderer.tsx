@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { TEMPLATES_REGISTRY } from "@/lib/templates-registry";
 import { SiteData } from "@/types";
+import { supabase } from "@/lib/supabase";
 
 type IconProps = React.SVGProps<SVGSVGElement>;
 
@@ -54,7 +55,6 @@ const Icons: Record<string, React.FC<IconProps>> = {
   ),
 };
 
-// ✨ استبدال any بالنوع الصحيح لمكونات lucide-react
 const BtnIcons: Record<string, React.FC<React.ComponentProps<"svg">>> = {
   globe: Globe,
   mail: Mail,
@@ -66,7 +66,6 @@ const BtnIcons: Record<string, React.FC<React.ComponentProps<"svg">>> = {
   play: Play,
 };
 
-// ✨ استخدام SiteData بدل any
 interface SiteRendererProps {
   site: SiteData;
   templateId: string;
@@ -81,20 +80,52 @@ export default function SiteRenderer({ site, templateId }: SiteRendererProps) {
   const TemplateComponent = TemplateConfig.component;
 
   useEffect(() => {
-    if (
-      typeof window === "undefined" ||
-      window.location.pathname.startsWith("/dashboard")
-    ) {
-      return;
-    }
+    const trackVisit = async () => {
+      if (
+        typeof window === "undefined" ||
+        window.location.pathname.startsWith("/dashboard")
+      ) {
+        return;
+      }
 
-    if (site.id) {
-      fetch("/api/analytics/view", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ site_id: site.id }),
-      }).catch(console.error);
-    }
+      if (!site.id) return;
+
+      try {
+        console.log("Analytics: Starting tracking for site:", site.id);
+
+        let visitorId = localStorage.getItem("visitor_id");
+        if (!visitorId) {
+          visitorId = crypto.randomUUID();
+          localStorage.setItem("visitor_id", visitorId);
+        }
+
+        const ua = navigator.userAgent;
+        let device = "Desktop";
+        if (/mobile/i.test(ua)) device = "Mobile";
+        else if (/tablet/i.test(ua)) device = "Tablet";
+
+        const referrer = document.referrer
+          ? new URL(document.referrer).hostname
+          : "Direct";
+
+        const { error } = await supabase.from("page_views").insert({
+          site_id: site.id,
+          visitor_id: visitorId,
+          device,
+          referrer,
+        });
+
+        if (error) {
+          console.error("Analytics Error (Supabase):", error.message);
+        } else {
+          console.log("Analytics Success! Visit recorded.");
+        }
+      } catch (err) {
+        console.error("Analytics Critical Error:", err);
+      }
+    };
+
+    trackVisit();
   }, [site.id]);
 
   return (

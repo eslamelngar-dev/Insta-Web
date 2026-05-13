@@ -1,7 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-// لازم اسم الـ Function يكون middleware
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -32,7 +31,6 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // لو المستخدم بيحاول يدخل الـ dashboard وهو مش مسجل، رجعه للـ login
   if (request.nextUrl.pathname.startsWith('/dashboard') && !user) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
@@ -40,7 +38,6 @@ export async function proxy(request: NextRequest) {
   return supabaseResponse;
 }
 
-// تحديد المسارات اللي الـ Middleware هيشتغل عليها
 export const config = {
   matcher: ['/dashboard/:path*'],
 };

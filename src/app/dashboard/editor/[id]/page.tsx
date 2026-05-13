@@ -450,7 +450,7 @@ function ConfirmModal({
               >
                 <X size={18} />
               </button>
-              <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-2xl sm:rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mb-6 sm:mb-8 shadow-xl shadow-indigo-500/30">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-2xl sm:rounded-3xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center mb-6 sm:mb-8 shadow-xl shadow-indigo-500/30">
                 <Save size={28} className="text-white" />
               </div>
               <h2 className="text-lg sm:text-xl font-black text-center text-slate-900 dark:text-white mb-2">
@@ -534,8 +534,7 @@ export default function Editor({
     "idle" | "checking" | "available" | "taken"
   >("idle");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [currentId, setCurrentId] = useState<string>(id);
-  const initialLoad = useRef(true);
+  const initialLoad = useRef<boolean>(true);
   const siteIdRef = useRef<string>(id);
   const saveLockRef = useRef<Promise<void> | null>(null);
 
@@ -624,8 +623,9 @@ export default function Editor({
         await saveLockRef.current;
       }
 
-      let releaseLock: (() => void) | null = null;
-      saveLockRef.current = new Promise((resolve) => {
+      let releaseLock: () => void = () => {};
+
+      saveLockRef.current = new Promise<void>((resolve) => {
         releaseLock = resolve;
       });
 
@@ -687,7 +687,6 @@ export default function Editor({
 
         if (targetId === "new" && savedSite) {
           siteIdRef.current = savedSite.id;
-          setCurrentId(savedSite.id);
           window.history.replaceState(
             null,
             "",
@@ -742,11 +741,11 @@ export default function Editor({
       effectiveUsernameStatus === "taken" ||
       effectiveUsernameStatus === "checking"
     ) {
-      setSaveStatus("unsaved");
+      setTimeout(() => setSaveStatus("unsaved"), 0);
       return;
     }
 
-    setSaveStatus("unsaved");
+    setTimeout(() => setSaveStatus("unsaved"), 0);
 
     const timer = setTimeout(() => {
       saveToDatabase(false, data.is_published ? "publish" : "draft");
