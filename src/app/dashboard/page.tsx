@@ -15,10 +15,14 @@ import {
   ArrowRight,
   Activity,
   Pencil,
+  Share2,
+  Copy,
 } from "lucide-react";
+import { FaWhatsapp, FaTwitter, FaFacebook, FaLinkedin } from "react-icons/fa";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { QRCodeSVG } from "qrcode.react";
 
 interface Site {
   id: string;
@@ -32,10 +36,16 @@ interface Site {
 export default function Dashboard() {
   const [sites, setSites] = useState<Site[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [origin, setOrigin] = useState("https://instaweb.me");
+
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [siteToDelete, setSiteToDelete] = useState<Site | null>(null);
   const [confirmName, setConfirmName] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [siteToShare, setSiteToShare] = useState<Site | null>(null);
 
   const fetchSites = useCallback(async () => {
     const {
@@ -55,6 +65,9 @@ export default function Dashboard() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchSites();
+    if (typeof window !== "undefined") {
+      setOrigin(window.location.origin);
+    }
   }, [fetchSites]);
 
   const openDeleteModal = (site: Site) => {
@@ -87,6 +100,39 @@ export default function Dashboard() {
       }
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const openShareModal = (site: Site) => {
+    setSiteToShare(site);
+    setIsShareModalOpen(true);
+  };
+
+  const closeShareModal = () => {
+    setIsShareModalOpen(false);
+    setSiteToShare(null);
+  };
+
+  const copyToClipboard = (url: string) => {
+    navigator.clipboard.writeText(url);
+    toast.success("Link copied to clipboard!");
+  };
+
+  const getShareUrl = (platform: string, url: string, title: string) => {
+    const encodedUrl = encodeURIComponent(url);
+    const encodedTitle = encodeURIComponent(`Check out my new site: ${title}`);
+
+    switch (platform) {
+      case "twitter":
+        return `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`;
+      case "facebook":
+        return `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`;
+      case "linkedin":
+        return `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`;
+      case "whatsapp":
+        return `https://wa.me/?text=${encodedTitle} ${encodedUrl}`;
+      default:
+        return url;
     }
   };
 
@@ -161,8 +207,8 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
             <AnimatePresence>
               {sites.map((site) => {
-                // ✨ تعريف اللون الخاص بالمشروع هنا عشان نستخدمه في اللوجو والخط
                 const siteColor = site.primary_color || "#6366f1";
+                const siteUrl = `${origin}/${site.username}`;
 
                 return (
                   <motion.div
@@ -173,7 +219,6 @@ export default function Dashboard() {
                     exit={{ opacity: 0, scale: 0.9 }}
                     className="bg-white dark:bg-slate-900 p-6 sm:p-8 md:p-10 rounded-2xl sm:rounded-[2.5rem] md:rounded-[3rem] border border-slate-200 dark:border-white/5 shadow-sm hover:shadow-xl transition-shadow group relative overflow-hidden flex flex-col"
                   >
-                    {/* ✨ الخط الملون فوق اللي بياخد لون المشروع مع توهج خفيف */}
                     <div
                       className="absolute top-0 left-0 w-full h-1.5 opacity-90 group-hover:h-2 transition-all duration-300 z-10"
                       style={{
@@ -182,7 +227,6 @@ export default function Dashboard() {
                       }}
                     />
                     <div className="flex justify-between items-start mb-6 sm:mb-8 md:mb-10">
-                      {/* ✨ أيقونة اللوجو الملونة */}
                       <div
                         className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-2xl md:rounded-3xl flex items-center justify-center transition-transform group-hover:scale-110 duration-300"
                         style={{
@@ -217,45 +261,60 @@ export default function Dashboard() {
                       {site.title}
                     </h3>
                     <p className="text-slate-400 text-[10px] mb-6 sm:mb-8 font-bold uppercase tracking-widest truncate flex-1 relative z-20">
-                      instaweb.me/{site.username}
+                      {origin.replace(/^https?:\/\//, "")}/{site.username}
                     </p>
 
-                    <div className="flex gap-2 sm:gap-3 mt-auto relative z-20">
+                    <div className="flex flex-wrap gap-2 sm:gap-3 mt-auto relative z-20">
                       <Link
                         href={`/dashboard/editor/${site.id}`}
-                        className="flex-1 py-3 sm:py-4 bg-slate-50 dark:bg-white/5 rounded-xl text-center text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white hover:border-indigo-600 dark:hover:bg-indigo-600 transition-all border border-slate-100 dark:border-white/5 flex items-center justify-center gap-1.5"
+                        className="flex-1 min-w-20 py-3 sm:py-4 bg-slate-50 dark:bg-white/5 rounded-xl text-center text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white hover:border-indigo-600 dark:hover:bg-indigo-600 transition-all border border-slate-100 dark:border-white/5 flex items-center justify-center gap-1.5"
                       >
                         <Pencil size={14} /> Edit
                       </Link>
 
                       <Link
                         href={`/dashboard/analytics/${site.id}`}
-                        className="flex-1 py-3 sm:py-4 bg-slate-50 dark:bg-white/5 rounded-xl text-center text-[10px] font-black uppercase tracking-widest hover:bg-purple-600 hover:text-white hover:border-purple-600 dark:hover:bg-purple-600 transition-all border border-slate-100 dark:border-white/5 flex items-center justify-center gap-1.5"
+                        className="flex-1 min-w-20 py-3 sm:py-4 bg-slate-50 dark:bg-white/5 rounded-xl text-center text-[10px] font-black uppercase tracking-widest hover:bg-purple-600 hover:text-white hover:border-purple-600 dark:hover:bg-purple-600 transition-all border border-slate-100 dark:border-white/5 flex items-center justify-center gap-1.5"
                       >
                         <Activity size={14} /> Stats
                       </Link>
 
-                      {site.is_published ? (
-                        <a
-                          href={`/${site.username}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="p-3 sm:p-4 bg-slate-50 dark:bg-white/5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 transition-all border border-slate-100 dark:border-white/5 text-slate-400 hover:text-slate-900 dark:hover:text-white group/link shrink-0"
-                        >
-                          <ExternalLink
-                            size={18}
-                            className="group-hover/link:scale-110 transition-transform"
-                          />
-                        </a>
-                      ) : (
-                        <button
-                          disabled
-                          className="p-3 sm:p-4 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/5 text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-50 shrink-0"
-                          title="Publish this site to view it"
-                        >
-                          <ExternalLink size={18} />
-                        </button>
-                      )}
+                      <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                        {site.is_published ? (
+                          <>
+                            <button
+                              onClick={() => openShareModal(site)}
+                              className="flex-1 sm:flex-none p-3 sm:p-4 bg-slate-50 dark:bg-white/5 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-600 hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-all border border-slate-100 dark:border-white/5 text-slate-400 group/link shrink-0 flex justify-center"
+                              title="Share Site"
+                            >
+                              <Share2
+                                size={18}
+                                className="group-hover/link:scale-110 transition-transform"
+                              />
+                            </button>
+                            <a
+                              href={siteUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex-1 sm:flex-none p-3 sm:p-4 bg-slate-50 dark:bg-white/5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 transition-all border border-slate-100 dark:border-white/5 text-slate-400 hover:text-slate-900 dark:hover:text-white group/link shrink-0 flex justify-center"
+                              title="Visit Site"
+                            >
+                              <ExternalLink
+                                size={18}
+                                className="group-hover/link:scale-110 transition-transform"
+                              />
+                            </a>
+                          </>
+                        ) : (
+                          <button
+                            disabled
+                            className="w-full p-3 sm:p-4 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/5 text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-50 flex items-center justify-center gap-2"
+                            title="Publish this site to share it"
+                          >
+                            <Share2 size={14} /> Publish to Share
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </motion.div>
                 );
@@ -324,6 +383,129 @@ export default function Dashboard() {
               >
                 {isDeleting ? "Wiping Data..." : "Confirm Termination"}
               </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isShareModalOpen && siteToShare && (
+          <div className="fixed inset-0 z-100 flex items-center justify-center p-4 sm:p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={closeShareModal}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl md:rounded-[3rem] p-6 sm:p-8 md:p-10 shadow-2xl border border-white/10 flex flex-col items-center text-center"
+            >
+              <button
+                onClick={closeShareModal}
+                className="absolute top-6 right-6 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+              >
+                <X size={24} />
+              </button>
+
+              <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-500 mb-6">
+                <Share2 size={28} />
+              </div>
+
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2 tracking-tight uppercase">
+                Share Project
+              </h2>
+              <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-8">
+                Scan the QR code or copy the link to share{" "}
+                <span className="font-bold text-slate-900 dark:text-white">
+                  {siteToShare.title}
+                </span>{" "}
+                with the world.
+              </p>
+
+              <div className="p-4 bg-white rounded-2xl shadow-sm border border-slate-100 mb-8 inline-block">
+                <QRCodeSVG
+                  value={`${origin}/${siteToShare.username}`}
+                  size={180}
+                  bgColor={"#ffffff"}
+                  fgColor={"#0f172a"}
+                  level={"H"}
+                  includeMargin={false}
+                />
+              </div>
+
+              <div className="w-full flex items-center gap-2 mb-8 bg-slate-50 dark:bg-slate-950 p-2 rounded-2xl border border-slate-200 dark:border-white/5">
+                <div className="flex-1 truncate px-3 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-left">
+                  {origin.replace(/^https?:\/\//, "")}/{siteToShare.username}
+                </div>
+                <button
+                  onClick={() =>
+                    copyToClipboard(`${origin}/${siteToShare.username}`)
+                  }
+                  className="px-4 py-3 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-500 transition-colors flex items-center gap-2 shrink-0"
+                >
+                  <Copy size={14} /> Copy
+                </button>
+              </div>
+
+              <div className="w-full border-t border-slate-100 dark:border-white/5 pt-6">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">
+                  Share via
+                </p>
+                <div className="flex justify-center gap-3">
+                  <a
+                    href={getShareUrl(
+                      "whatsapp",
+                      `${origin}/${siteToShare.username}`,
+                      siteToShare.title,
+                    )}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-12 h-12 rounded-full bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366] hover:text-white flex items-center justify-center transition-all duration-300"
+                  >
+                    <FaWhatsapp size={20} />
+                  </a>
+                  <a
+                    href={getShareUrl(
+                      "twitter",
+                      `${origin}/${siteToShare.username}`,
+                      siteToShare.title,
+                    )}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-black hover:text-white flex items-center justify-center transition-all duration-300"
+                  >
+                    <FaTwitter size={20} />
+                  </a>
+                  <a
+                    href={getShareUrl(
+                      "facebook",
+                      `${origin}/${siteToShare.username}`,
+                      siteToShare.title,
+                    )}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-12 h-12 rounded-full bg-[#1877F2]/10 text-[#1877F2] hover:bg-[#1877F2] hover:text-white flex items-center justify-center transition-all duration-300"
+                  >
+                    <FaFacebook size={20} />
+                  </a>
+                  <a
+                    href={getShareUrl(
+                      "linkedin",
+                      `${origin}/${siteToShare.username}`,
+                      siteToShare.title,
+                    )}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-12 h-12 rounded-full bg-[#0A66C2]/10 text-[#0A66C2] hover:bg-[#0A66C2] hover:text-white flex items-center justify-center transition-all duration-300"
+                  >
+                    <FaLinkedin size={20} />
+                  </a>
+                </div>
+              </div>
             </motion.div>
           </div>
         )}

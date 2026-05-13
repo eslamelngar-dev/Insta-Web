@@ -29,7 +29,12 @@ interface RealStats {
   totalViews: number;
   uniqueVisitors: number;
   topReferrers: { name: string; views: number; color: string }[];
-  devices: { name: string; percentage: number; icon: any; color: string }[];
+  devices: {
+    name: string;
+    percentage: number;
+    icon: React.ElementType;
+    color: string;
+  }[];
 }
 
 export default function AnalyticsPage({
@@ -49,7 +54,6 @@ export default function AnalyticsPage({
 
   useEffect(() => {
     const fetchSiteAndStats = async () => {
-      // 1. جلب بيانات الموقع
       const { data: siteData } = await supabase
         .from("sites")
         .select("id, title, username, primary_color")
@@ -58,7 +62,6 @@ export default function AnalyticsPage({
 
       if (siteData) setSite(siteData);
 
-      // 2. جلب وتحليل بيانات الزيارات الحقيقية
       const { data: viewsData } = await supabase
         .from("page_views")
         .select("*")
@@ -67,11 +70,9 @@ export default function AnalyticsPage({
       if (viewsData && viewsData.length > 0) {
         const totalViews = viewsData.length;
 
-        // حساب الزوار الفريدين (Unique)
         const uniqueSet = new Set(viewsData.map((v) => v.visitor_id));
         const uniqueVisitors = uniqueSet.size;
 
-        // تحليل مصادر الزيارات (Referrers)
         const referrersMap: Record<string, number> = {};
         viewsData.forEach((v) => {
           const ref = v.referrer && v.referrer !== "" ? v.referrer : "Direct";
@@ -93,7 +94,6 @@ export default function AnalyticsPage({
           .sort((a, b) => b.views - a.views)
           .slice(0, 4);
 
-        // تحليل الأجهزة (Devices)
         const devicesMap = { Mobile: 0, Desktop: 0, Tablet: 0 };
         viewsData.forEach((v) => {
           const dev = (v.device as keyof typeof devicesMap) || "Desktop";
@@ -152,7 +152,6 @@ export default function AnalyticsPage({
   return (
     <div className="min-h-screen p-4 sm:p-6 md:p-12 bg-white dark:bg-slate-950 text-slate-900 dark:text-white transition-colors duration-500">
       <div className="max-w-7xl mx-auto space-y-8 sm:space-y-12">
-        {/* Header */}
         <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
           <div className="flex items-center gap-4">
             <Link
@@ -178,7 +177,6 @@ export default function AnalyticsPage({
           </div>
         </header>
 
-        {/* Real KPIs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {[
             {
@@ -198,7 +196,7 @@ export default function AnalyticsPage({
               value: "~1m 20s",
               icon: Clock,
               trend: "Est.",
-            }, // الوقت يحتاج نظام معقد للتتبع فخليناه تقديري حاليا
+            },
             {
               label: "Bounce Rate",
               value: "N/A",
@@ -240,9 +238,7 @@ export default function AnalyticsPage({
           ))}
         </div>
 
-        {/* Real Traffic Sources & Devices */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-          {/* Top Referrers */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -285,7 +281,6 @@ export default function AnalyticsPage({
             )}
           </motion.div>
 
-          {/* Devices Breakdown */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -321,7 +316,6 @@ export default function AnalyticsPage({
               ))}
             </div>
 
-            {/* Visual Bar for Devices */}
             <div className="mt-8 flex h-3 w-full rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 gap-1">
               {stats.devices.map((device, i) => (
                 <motion.div
