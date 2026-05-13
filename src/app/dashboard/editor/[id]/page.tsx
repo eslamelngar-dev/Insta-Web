@@ -429,7 +429,6 @@ function ConfirmModal({
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -437,8 +436,6 @@ function ConfirmModal({
             onClick={onClose}
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
           />
-
-          {/* Modal */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -447,20 +444,15 @@ function ConfirmModal({
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
           >
             <div className="bg-white dark:bg-slate-900 rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-10 max-w-md w-full shadow-2xl border border-slate-100 dark:border-white/5 relative">
-              {/* Close Button */}
               <button
                 onClick={onClose}
                 className="absolute top-4 right-4 sm:top-6 sm:right-6 p-2 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-all text-slate-400"
               >
                 <X size={18} />
               </button>
-
-              {/* Icon */}
-              <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-2xl sm:rounded-3xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center mb-6 sm:mb-8 shadow-xl shadow-indigo-500/30">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-2xl sm:rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mb-6 sm:mb-8 shadow-xl shadow-indigo-500/30">
                 <Save size={28} className="text-white" />
               </div>
-
-              {/* Title */}
               <h2 className="text-lg sm:text-xl font-black text-center text-slate-900 dark:text-white mb-2">
                 How would you like to save?
               </h2>
@@ -468,10 +460,7 @@ function ConfirmModal({
                 Choose to save as a draft for later editing, or publish directly
                 to make it live on the web.
               </p>
-
-              {/* Actions */}
               <div className="space-y-3 sm:space-y-4">
-                {/* Save as Draft */}
                 <button
                   onClick={onSaveAsDraft}
                   disabled={loading}
@@ -492,8 +481,6 @@ function ConfirmModal({
                     </>
                   )}
                 </button>
-
-                {/* Publish */}
                 <button
                   onClick={onPublish}
                   disabled={loading}
@@ -515,8 +502,6 @@ function ConfirmModal({
                   )}
                 </button>
               </div>
-
-              {/* Hint */}
               <p className="text-[9px] text-center text-slate-400 mt-5 sm:mt-6">
                 Drafts are saved automatically. You can publish anytime later.
               </p>
@@ -549,7 +534,10 @@ export default function Editor({
     "idle" | "checking" | "available" | "taken"
   >("idle");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [currentId, setCurrentId] = useState<string>(id);
   const initialLoad = useRef(true);
+  const siteIdRef = useRef<string>(id);
+  const saveLockRef = useRef<Promise<void> | null>(null);
 
   const [data, setData] = useState<SiteData>({
     username: "",
@@ -619,19 +607,28 @@ export default function Editor({
         .select("id")
         .eq("username", cleanUsername);
 
-      if (id !== "new") {
-        query = query.neq("id", id);
+      if (siteIdRef.current !== "new") {
+        query = query.neq("id", siteIdRef.current);
       }
 
-      const { data: existingSite } = await query.single();
+      const { data: existingSite } = await query.maybeSingle();
       setUsernameStatus(existingSite ? "taken" : "available");
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [data.username, id]);
+  }, [data.username]);
 
   const saveToDatabase = useCallback(
     async (showToast = false, publishMode: "draft" | "publish" = "publish") => {
+      while (saveLockRef.current) {
+        await saveLockRef.current;
+      }
+
+      let releaseLock: (() => void) | null = null;
+      saveLockRef.current = new Promise((resolve) => {
+        releaseLock = resolve;
+      });
+
       setSaveStatus("saving");
 
       try {
@@ -652,7 +649,6 @@ export default function Editor({
 
         const payload = {
           user_id: user.id,
-          ...(id !== "new" && { id }),
           username:
             data.username.toLowerCase().trim() ||
             `user_${createId().slice(0, 8)}`,
@@ -665,10 +661,38 @@ export default function Editor({
           is_published: publishMode === "publish",
         };
 
-        const { error } = await supabase.from("sites").upsert(payload);
+        const targetId = siteIdRef.current;
+        let queryResult;
+
+        if (targetId === "new") {
+          queryResult = await supabase
+            .from("sites")
+            .insert(payload)
+            .select()
+            .single();
+        } else {
+          queryResult = await supabase
+            .from("sites")
+            .update(payload)
+            .eq("id", targetId)
+            .select()
+            .single();
+        }
+
+        const { data: savedSite, error } = queryResult;
 
         if (error) {
           throw error;
+        }
+
+        if (targetId === "new" && savedSite) {
+          siteIdRef.current = savedSite.id;
+          setCurrentId(savedSite.id);
+          window.history.replaceState(
+            null,
+            "",
+            `/dashboard/editor/${savedSite.id}`,
+          );
         }
 
         setData((prev) => ({
@@ -694,12 +718,16 @@ export default function Editor({
         }
       } catch (err: unknown) {
         setSaveStatus("unsaved");
+        console.error("Supabase Save Error:", err);
         if (showToast && err instanceof Error) {
-          toast.error(err.message);
+          toast.error(err.message || "An error occurred while saving!");
         }
+      } finally {
+        if (releaseLock) releaseLock();
+        saveLockRef.current = null;
       }
     },
-    [data, id, router],
+    [data, router],
   );
 
   useEffect(() => {
@@ -707,6 +735,14 @@ export default function Editor({
       if (Object.keys(data.content).length > 0) {
         initialLoad.current = false;
       }
+      return;
+    }
+
+    if (
+      effectiveUsernameStatus === "taken" ||
+      effectiveUsernameStatus === "checking"
+    ) {
+      setSaveStatus("unsaved");
       return;
     }
 
@@ -723,6 +759,7 @@ export default function Editor({
     data.template_id,
     data.is_published,
     saveToDatabase,
+    effectiveUsernameStatus,
   ]);
 
   const updateContent = (updates: Partial<SiteContent>) =>
@@ -789,9 +826,6 @@ export default function Editor({
     }
   };
 
-  /* ════════════════════════════════════════════
-     ★  Save / Publish Handlers
-     ════════════════════════════════════════════ */
   const handleSaveClick = () => {
     if (effectiveUsernameStatus === "taken") {
       toast.error("Please choose an available username before saving.");
@@ -1538,8 +1572,6 @@ export default function Editor({
                   </span>
                 </>
               )}
-
-              {/* Status Badge */}
               {data.is_published ? (
                 <span className="ml-2 text-[8px] font-black uppercase bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 px-2 py-0.5 rounded-full flex items-center gap-1">
                   <Globe size={8} /> Live
@@ -1678,7 +1710,6 @@ export default function Editor({
             : renderStandardControls()}
       </div>
 
-      {/* ═══ Bottom Save Button ═══ */}
       <div className="p-4 sm:p-6 lg:p-10 border-t border-slate-100 dark:border-white/5 bg-white dark:bg-slate-900 shrink-0">
         <button
           onClick={handleSaveClick}
@@ -1702,7 +1733,6 @@ export default function Editor({
 
   return (
     <>
-      {/* ═══ Confirmation Modal ═══ */}
       <ConfirmModal
         isOpen={showConfirmModal}
         onClose={() => setShowConfirmModal(false)}
