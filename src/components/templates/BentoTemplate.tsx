@@ -8,7 +8,6 @@ import Image from "next/image";
 import createGlobe from "cobe";
 import { TemplateProps, Block, SiteData, SiteContent } from "@/types";
 
-// 🌍 1. مكون الكرة الأرضية التفاعلية (3D Globe)
 function LocationGlobe({
   lat,
   lng,
@@ -29,18 +28,18 @@ function LocationGlobe({
       width: 800,
       height: 800,
       phi: 0,
-      theta: 0.15,
+      theta: 0.1,
       dark: isDark ? 1 : 0,
       diffuse: 1.2,
       mapSamples: 16000,
       mapBrightness: 6,
-      baseColor: isDark ? [0.1, 0.1, 0.1] : [0.95, 0.95, 0.95],
-      markerColor: [0.38, 0.4, 0.95],
-      glowColor: isDark ? [0.1, 0.1, 0.2] : [0.9, 0.9, 0.9],
-      markers: [{ location: [lat, lng], size: 0.1 }],
+      baseColor: isDark ? [0.1, 0.1, 0.1] : [0.98, 0.98, 0.98],
+      markerColor: [0.06, 0.8, 0.5],
+      glowColor: isDark ? [0.08, 0.08, 0.08] : [0.95, 0.95, 0.95],
+      markers: [{ location: [lat, lng], size: 0.08 }],
       onRender: (state: { phi: number }) => {
         state.phi = phi;
-        phi += 0.005;
+        phi += 0.003;
       },
     };
 
@@ -53,16 +52,18 @@ function LocationGlobe({
   }, [lat, lng, isDark]);
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-60 mix-blend-luminosity">
-      <canvas
-        ref={canvasRef}
-        style={{ width: "160%", height: "160%", contain: "layout paint size" }}
-      />
-    </div>
+    <canvas
+      ref={canvasRef}
+      style={{
+        width: "100%",
+        height: "100%",
+        contain: "layout paint size",
+        aspectRatio: "1 / 1",
+      }}
+    />
   );
 }
 
-// 🎵 2. دالة تحويل رابط سبوتيفاي لمشغل حقيقي
 const getSpotifyEmbedUrl = (url?: string, isDark?: boolean) => {
   if (!url) return null;
   try {
@@ -75,7 +76,6 @@ const getSpotifyEmbedUrl = (url?: string, isDark?: boolean) => {
   }
 };
 
-// 🌟 3. إعدادات الأنيميشن
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
@@ -105,9 +105,13 @@ export default function BentoTemplate({
   const primaryColor = content.color || siteData.primary_color || "#f43f5e";
   const isTemplateDark = content.theme_mode === "dark";
 
+  const darkBgHex = "#161b22";
+  const lightBgHex = "#ffffff";
+
   const boxBg = isTemplateDark
-    ? "bg-[#161b22] border-white/5"
-    : "bg-white border-slate-200";
+    ? `bg-[${darkBgHex}] border-white/5`
+    : `bg-[${lightBgHex}] border-slate-200`;
+
   const textColor = isTemplateDark ? "text-white" : "text-slate-900";
   const mutedText = isTemplateDark ? "text-slate-400" : "text-slate-500";
 
@@ -144,7 +148,6 @@ export default function BentoTemplate({
 
           const baseClasses = `${spanClass} ${aspectClass} rounded-4xl border ${boxBg} relative overflow-hidden shadow-sm flex flex-col`;
 
-          // 👤 1. Profile Block
           if (block.type === "profile") {
             return (
               <motion.div
@@ -155,6 +158,9 @@ export default function BentoTemplate({
                 whileTap={{ scale: 0.97 }}
                 transition={{ type: "spring", stiffness: 300, damping: 25 }}
                 className={`${baseClasses} p-4 @[768px]:p-8 justify-center cursor-default`}
+                style={{
+                  backgroundColor: isTemplateDark ? darkBgHex : lightBgHex,
+                }}
               >
                 <div
                   className="absolute -top-24 -right-24 w-64 h-64 rounded-full opacity-20 blur-[60px]"
@@ -198,7 +204,6 @@ export default function BentoTemplate({
             );
           }
 
-          // 🔗 2. Link Block
           if (block.type === "link") {
             const BIcon = BtnIcons?.[block.data.icon || ""] || ExternalLink;
             return (
@@ -213,6 +218,9 @@ export default function BentoTemplate({
                 target="_blank"
                 rel="noreferrer"
                 className={`${baseClasses} p-4 @[768px]:p-6 justify-between group cursor-pointer`}
+                style={{
+                  backgroundColor: isTemplateDark ? darkBgHex : lightBgHex,
+                }}
               >
                 <div className="flex justify-between items-start">
                   <motion.div
@@ -257,7 +265,6 @@ export default function BentoTemplate({
             );
           }
 
-          // 🖼️ 3. Image Block
           if (block.type === "image") {
             return (
               <motion.div
@@ -298,7 +305,6 @@ export default function BentoTemplate({
             );
           }
 
-          // 🌍 4. Social Block
           if (block.type === "social") {
             const Icon = Icons?.[block.data.platform || ""] || GlobeIcon;
             return (
@@ -313,6 +319,9 @@ export default function BentoTemplate({
                 target="_blank"
                 rel="noreferrer"
                 className={`${baseClasses} items-center justify-center group cursor-pointer`}
+                style={{
+                  backgroundColor: isTemplateDark ? darkBgHex : lightBgHex,
+                }}
               >
                 <motion.div
                   whileHover={{ rotate: 15, scale: 1.2 }}
@@ -337,7 +346,6 @@ export default function BentoTemplate({
             );
           }
 
-          // 📈 5. Stats Block
           if (block.type === "stats") {
             return (
               <motion.div
@@ -346,6 +354,9 @@ export default function BentoTemplate({
                 layout
                 whileHover={{ scale: 1.02 }}
                 className={`${baseClasses} p-4 @[768px]:p-6 justify-center items-center text-center`}
+                style={{
+                  backgroundColor: isTemplateDark ? darkBgHex : lightBgHex,
+                }}
               >
                 <h3
                   className={`text-4xl @[768px]:text-6xl font-black tracking-tighter ${textColor}`}
@@ -362,7 +373,6 @@ export default function BentoTemplate({
             );
           }
 
-          // 📝 6. Text Block
           if (block.type === "text") {
             return (
               <motion.div
@@ -371,14 +381,17 @@ export default function BentoTemplate({
                 layout
                 whileHover={{ scale: 1.01 }}
                 className={`${baseClasses} p-5 @[768px]:p-8 justify-center`}
+                style={{
+                  backgroundColor: isTemplateDark ? darkBgHex : lightBgHex,
+                }}
               >
-                {block.data.title && (
+                {block.data.title ? (
                   <h3
                     className={`text-[9px] @[768px]:text-xs font-black uppercase tracking-widest mb-2 @[768px]:mb-3 opacity-50 ${textColor}`}
                   >
                     {block.data.title}
                   </h3>
-                )}
+                ) : null}
                 <p
                   className={`text-sm @[768px]:text-lg font-medium leading-relaxed ${textColor}`}
                 >
@@ -388,9 +401,7 @@ export default function BentoTemplate({
             );
           }
 
-          // 📍 7. Location Block
           if (block.type === "location") {
-            // ✅ الحل السحري لتخطي خطأ الـ TypeScript هنا
             const locData = block.data as {
               lat?: number;
               lng?: number;
@@ -401,34 +412,79 @@ export default function BentoTemplate({
 
             return (
               <motion.div
-                key={block.id}
+                key={`${block.id}-location`}
                 variants={blockVariants}
-                layout
                 whileHover={{ scale: 1.02 }}
-                className={`${baseClasses} p-4 @[768px]:p-6 justify-end overflow-hidden group`}
+                className={`${baseClasses} group overflow-hidden relative`}
+                style={{
+                  backgroundColor: isTemplateDark ? darkBgHex : lightBgHex,
+                }}
               >
-                <LocationGlobe lat={lat} lng={lng} isDark={isTemplateDark} />
-                <div className="absolute inset-0 opacity-20 dark:opacity-40 group-hover:opacity-30 transition-opacity bg-linear-to-t from-slate-900/80 to-transparent" />
-                <div className="absolute top-4 right-4 @[768px]:top-6 @[768px]:right-6 p-2 rounded-full bg-slate-100 dark:bg-white/10 backdrop-blur-md">
-                  <MapPin className={textColor} size={16} />
+                <div className="absolute top-[10%] left-1/2 -translate-x-1/2 w-[160%] aspect-square opacity-60 mix-blend-luminosity transition-transform duration-1000 group-hover:scale-105 pointer-events-none">
+                  <LocationGlobe lat={lat} lng={lng} isDark={isTemplateDark} />
                 </div>
-                <div className="relative z-10 bg-white/10 dark:bg-black/20 backdrop-blur-md p-3 @[768px]:p-4 rounded-2xl border border-white/10">
-                  <p
-                    className={`text-[7px] @[768px]:text-[9px] font-bold uppercase tracking-widest ${mutedText} mb-0.5`}
-                  >
-                    Based In
-                  </p>
-                  <h3
-                    className={`text-sm @[768px]:text-base font-black uppercase tracking-tight ${textColor} truncate`}
-                  >
-                    {block.data.label || "Earth"}
-                  </h3>
+
+                <div
+                  className="absolute inset-0 z-10 pointer-events-none"
+                  style={{
+                    background: isTemplateDark
+                      ? `linear-gradient(to top, ${darkBgHex} 15%, rgba(22,27,34,0.6) 60%, transparent)`
+                      : `linear-gradient(to top, ${lightBgHex} 15%, rgba(255,255,255,0.6) 60%, transparent)`,
+                  }}
+                />
+
+                <div className="relative z-20 h-full p-5 @[768px]:p-6 flex flex-col justify-between">
+                  <div className="flex justify-between items-start">
+                    <div
+                      className={`p-2 @[768px]:p-3 rounded-xl border backdrop-blur-md ${
+                        isTemplateDark
+                          ? "bg-white/5 border-white/10 text-white"
+                          : "bg-black/5 border-black/10 text-black"
+                      }`}
+                    >
+                      <MapPin size={18} strokeWidth={2} />
+                    </div>
+
+                    <div
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-full border backdrop-blur-md ${
+                        isTemplateDark
+                          ? "bg-white/10 border-white/10"
+                          : "bg-black/5 border-black/10"
+                      }`}
+                    >
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                      </span>
+                      <span
+                        className={`text-[8px] @[768px]:text-[10px] font-black uppercase tracking-widest ${
+                          isTemplateDark
+                            ? "text-emerald-400"
+                            : "text-emerald-600"
+                        }`}
+                      >
+                        Live
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-auto">
+                    <p
+                      className={`text-[9px] @[768px]:text-[11px] font-bold uppercase tracking-widest mb-1 ${mutedText}`}
+                    >
+                      Based In
+                    </p>
+                    <h3
+                      className={`text-lg @[768px]:text-2xl font-black tracking-tight leading-tight line-clamp-2 ${textColor}`}
+                    >
+                      {block.data.label || "October Gardens, Giza"}
+                    </h3>
+                  </div>
                 </div>
               </motion.div>
             );
           }
 
-          // 🎧 8. Music Block
           if (block.type === "music") {
             const spotifyEmbedUrl = getSpotifyEmbedUrl(
               block.data.url,
@@ -438,21 +494,25 @@ export default function BentoTemplate({
             if (spotifyEmbedUrl) {
               return (
                 <motion.div
-                  key={block.id}
+                  key={`${block.id}-music`}
                   variants={blockVariants}
-                  layout
                   whileHover={{ scale: 1.01, y: -2 }}
                   className={`${baseClasses} p-0 overflow-hidden relative group`}
                   style={{
-                    backgroundColor: isTemplateDark ? "#121212" : "#f8f8f8",
+                    backgroundColor: "transparent",
                   }}
                 >
                   <iframe
                     src={spotifyEmbedUrl}
                     className="absolute inset-0 w-full h-full border-0"
                     allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                    allowtransparency="true"
                     loading="lazy"
-                    style={{ borderRadius: "inherit" }}
+                    style={{
+                      borderRadius: "inherit",
+                      backgroundColor: "transparent",
+                      colorScheme: "normal",
+                    }}
                   />
                 </motion.div>
               );
@@ -460,10 +520,12 @@ export default function BentoTemplate({
 
             return (
               <motion.div
-                key={block.id}
+                key={`${block.id}-music-placeholder`}
                 variants={blockVariants}
-                layout
                 className={`${baseClasses} p-4 @[768px]:p-6 flex flex-col justify-center items-center group cursor-default`}
+                style={{
+                  backgroundColor: isTemplateDark ? darkBgHex : lightBgHex,
+                }}
               >
                 <div className="p-4 rounded-full bg-green-500/10 mb-3">
                   <Music className="text-green-500" size={24} />
