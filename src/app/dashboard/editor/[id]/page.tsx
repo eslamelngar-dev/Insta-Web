@@ -1,4 +1,3 @@
-// src/app/dashboard/editor/[id]/page.tsx
 "use client";
 
 import React, { useState, useEffect, use, useRef, useCallback } from "react";
@@ -534,17 +533,36 @@ export default function Editor({
     "idle" | "checking" | "available" | "taken"
   >("idle");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const initialLoad = useRef<boolean>(true);
+
+  const [isReady, setIsReady] = useState(id === "new");
+
   const siteIdRef = useRef<string>(id);
   const saveLockRef = useRef<Promise<void> | null>(null);
+  const isInitialized = useRef<boolean>(false);
+  const initialLoad = useRef<boolean>(true);
 
-  const [data, setData] = useState<SiteData>({
-    username: "",
-    title: "",
-    bio: "",
-    template_id: "classic",
-    content: {},
-    is_published: false,
+  const [data, setData] = useState<SiteData>(() => {
+    if (id === "new") {
+      const rawDefault =
+        TEMPLATES_REGISTRY[templateId]?.defaultContent ??
+        TEMPLATES_REGISTRY.classic.defaultContent;
+      return {
+        username: "",
+        title: "",
+        bio: "",
+        template_id: templateId,
+        content: JSON.parse(JSON.stringify(rawDefault)),
+        is_published: false,
+      };
+    }
+    return {
+      username: "",
+      title: "",
+      bio: "",
+      template_id: "classic",
+      content: {},
+      is_published: false,
+    };
   });
 
   const effectiveUsernameStatus =
@@ -559,20 +577,10 @@ export default function Editor({
 
   useEffect(() => {
     const initEditor = async () => {
-      if (id === "new") {
-        const rawDefault =
-          TEMPLATES_REGISTRY[templateId]?.defaultContent ??
-          TEMPLATES_REGISTRY.classic.defaultContent;
-        const freshCopy = JSON.parse(JSON.stringify(rawDefault)) as SiteContent;
-        setData({
-          username: "",
-          title: "",
-          bio: "",
-          template_id: templateId,
-          content: freshCopy,
-          is_published: false,
-        });
-      } else {
+      if (isInitialized.current) return;
+      isInitialized.current = true;
+
+      if (id !== "new") {
         const { data: site } = await supabase
           .from("sites")
           .select("*")
@@ -588,10 +596,11 @@ export default function Editor({
             is_published: site.is_published ?? false,
           });
         }
+        setIsReady(true);
       }
     };
     initEditor();
-  }, [id, templateId]);
+  }, [id]);
 
   useEffect(() => {
     if (!data.username || data.username.trim() === "") {
@@ -687,11 +696,9 @@ export default function Editor({
 
         if (targetId === "new" && savedSite) {
           siteIdRef.current = savedSite.id;
-          window.history.replaceState(
-            null,
-            "",
-            `/dashboard/editor/${savedSite.id}`,
-          );
+          router.replace(`/dashboard/editor/${savedSite.id}`, {
+            scroll: false,
+          });
         }
 
         setData((prev) => ({
@@ -730,10 +737,10 @@ export default function Editor({
   );
 
   useEffect(() => {
+    if (!isReady) return;
+
     if (initialLoad.current) {
-      if (Object.keys(data.content).length > 0) {
-        initialLoad.current = false;
-      }
+      initialLoad.current = false;
       return;
     }
 
@@ -753,6 +760,7 @@ export default function Editor({
 
     return () => clearTimeout(timer);
   }, [
+    isReady,
     data.content,
     data.username,
     data.template_id,
@@ -913,6 +921,19 @@ export default function Editor({
     newPortfolio[index] = { ...newPortfolio[index], [field]: value };
     updateContent({ portfolio: newPortfolio });
   };
+
+  if (!isReady) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="animate-spin text-indigo-500" size={32} />
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+            Loading Workspace...
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   const TemplateConfig =
     TEMPLATES_REGISTRY[data.template_id] ?? TEMPLATES_REGISTRY.classic;
