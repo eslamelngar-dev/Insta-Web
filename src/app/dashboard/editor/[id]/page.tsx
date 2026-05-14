@@ -64,6 +64,10 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 
 type IconProps = React.SVGProps<SVGSVGElement>;
+type SaveToDatabaseFn = (
+  showToast?: boolean,
+  publishMode?: "draft" | "publish",
+) => Promise<void>;
 
 const createId = () => {
   if (
@@ -828,6 +832,10 @@ export default function Editor({
   const saveLockRef = useRef<Promise<void> | null>(null);
   const isInitialized = useRef<boolean>(false);
   const initialLoad = useRef<boolean>(true);
+  const usernameStatusRef = useRef<"idle" | "checking" | "available" | "taken">(
+    "idle",
+  );
+  const latestSaveRef = useRef<SaveToDatabaseFn | null>(null);
 
   const [data, setData] = useState<SiteData>(() => {
     if (id === "new") {
@@ -914,7 +922,7 @@ export default function Editor({
     return () => clearTimeout(timer);
   }, [data.username]);
 
-  const saveToDatabase = useCallback(
+  const saveToDatabase = useCallback<SaveToDatabaseFn>(
     async (showToast = false, publishMode: "draft" | "publish" = "publish") => {
       while (saveLockRef.current) {
         await saveLockRef.current;
@@ -1024,6 +1032,14 @@ export default function Editor({
   );
 
   useEffect(() => {
+    usernameStatusRef.current = effectiveUsernameStatus;
+  }, [effectiveUsernameStatus]);
+
+  useEffect(() => {
+    latestSaveRef.current = saveToDatabase;
+  }, [saveToDatabase]);
+
+  useEffect(() => {
     if (!isReady) return;
 
     if (initialLoad.current) {
@@ -1031,18 +1047,24 @@ export default function Editor({
       return;
     }
 
-    if (
-      effectiveUsernameStatus === "taken" ||
-      effectiveUsernameStatus === "checking"
-    ) {
-      setTimeout(() => setSaveStatus("unsaved"), 0);
+    if (!data.username) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSaveStatus("unsaved");
       return;
     }
 
-    setTimeout(() => setSaveStatus("unsaved"), 0);
+    setSaveStatus("unsaved");
 
     const timer = setTimeout(() => {
-      saveToDatabase(false, data.is_published ? "publish" : "draft");
+      if (
+        usernameStatusRef.current === "taken" ||
+        usernameStatusRef.current === "checking" ||
+        !data.username
+      ) {
+        return;
+      }
+
+      latestSaveRef.current?.(false, data.is_published ? "publish" : "draft");
     }, 2000);
 
     return () => clearTimeout(timer);
@@ -1052,8 +1074,6 @@ export default function Editor({
     data.username,
     data.template_id,
     data.is_published,
-    saveToDatabase,
-    effectiveUsernameStatus,
   ]);
 
   const updateContent = (updates: Partial<SiteContent>) =>
@@ -1325,6 +1345,7 @@ export default function Editor({
               const exists = data.content.social_links?.some(
                 (s) => s.platform === p,
               );
+
               return (
                 <button
                   key={p}
