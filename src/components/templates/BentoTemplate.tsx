@@ -1,26 +1,86 @@
-// src/components/templates/BentoTemplate.tsx
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import type { Variants } from "framer-motion";
-import { ExternalLink, Globe } from "lucide-react";
+import { ExternalLink, Globe as GlobeIcon, MapPin, Music } from "lucide-react";
 import Image from "next/image";
-import {
-  TemplateProps,
-  Block,
-  SiteData,
-  SiteContent,
-} from "@/types";
+import createGlobe from "cobe";
+import { TemplateProps, Block, SiteData, SiteContent } from "@/types";
 
+// 🌍 1. مكون الكرة الأرضية التفاعلية (3D Globe)
+function LocationGlobe({
+  lat,
+  lng,
+  isDark,
+}: {
+  lat: number;
+  lng: number;
+  isDark: boolean;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    let phi = 0;
+    if (!canvasRef.current) return;
+
+    const globeOptions = {
+      devicePixelRatio: 2,
+      width: 800,
+      height: 800,
+      phi: 0,
+      theta: 0.15,
+      dark: isDark ? 1 : 0,
+      diffuse: 1.2,
+      mapSamples: 16000,
+      mapBrightness: 6,
+      baseColor: isDark ? [0.1, 0.1, 0.1] : [0.95, 0.95, 0.95],
+      markerColor: [0.38, 0.4, 0.95],
+      glowColor: isDark ? [0.1, 0.1, 0.2] : [0.9, 0.9, 0.9],
+      markers: [{ location: [lat, lng], size: 0.1 }],
+      onRender: (state: { phi: number }) => {
+        state.phi = phi;
+        phi += 0.005;
+      },
+    };
+
+    const globe = createGlobe(
+      canvasRef.current,
+      globeOptions as unknown as Parameters<typeof createGlobe>[1],
+    );
+
+    return () => globe.destroy();
+  }, [lat, lng, isDark]);
+
+  return (
+    <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-60 mix-blend-luminosity">
+      <canvas
+        ref={canvasRef}
+        style={{ width: "160%", height: "160%", contain: "layout paint size" }}
+      />
+    </div>
+  );
+}
+
+// 🎵 2. دالة تحويل رابط سبوتيفاي لمشغل حقيقي
+const getSpotifyEmbedUrl = (url?: string, isDark?: boolean) => {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    if (!u.hostname.includes("spotify.com")) return null;
+    const theme = isDark ? "0" : "1";
+    return `https://open.spotify.com/embed${u.pathname}?utm_source=generator&theme=${theme}`;
+  } catch {
+    return null;
+  }
+};
+
+// 🌟 3. إعدادات الأنيميشن
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: {
-      staggerChildren: 0.08,
-      delayChildren: 0.1,
-    },
+    transition: { staggerChildren: 0.08, delayChildren: 0.1 },
   },
 };
 
@@ -84,6 +144,7 @@ export default function BentoTemplate({
 
           const baseClasses = `${spanClass} ${aspectClass} rounded-4xl border ${boxBg} relative overflow-hidden shadow-sm flex flex-col`;
 
+          // 👤 1. Profile Block
           if (block.type === "profile") {
             return (
               <motion.div
@@ -137,6 +198,7 @@ export default function BentoTemplate({
             );
           }
 
+          // 🔗 2. Link Block
           if (block.type === "link") {
             const BIcon = BtnIcons?.[block.data.icon || ""] || ExternalLink;
             return (
@@ -195,6 +257,7 @@ export default function BentoTemplate({
             );
           }
 
+          // 🖼️ 3. Image Block
           if (block.type === "image") {
             return (
               <motion.div
@@ -235,8 +298,9 @@ export default function BentoTemplate({
             );
           }
 
+          // 🌍 4. Social Block
           if (block.type === "social") {
-            const Icon = Icons?.[block.data.platform || ""] || Globe;
+            const Icon = Icons?.[block.data.platform || ""] || GlobeIcon;
             return (
               <motion.a
                 key={block.id}
@@ -270,6 +334,151 @@ export default function BentoTemplate({
                   {block.data.platform}
                 </p>
               </motion.a>
+            );
+          }
+
+          // 📈 5. Stats Block
+          if (block.type === "stats") {
+            return (
+              <motion.div
+                key={block.id}
+                variants={blockVariants}
+                layout
+                whileHover={{ scale: 1.02 }}
+                className={`${baseClasses} p-4 @[768px]:p-6 justify-center items-center text-center`}
+              >
+                <h3
+                  className={`text-4xl @[768px]:text-6xl font-black tracking-tighter ${textColor}`}
+                  style={{ color: primaryColor }}
+                >
+                  {block.data.title || "0"}
+                </h3>
+                <p
+                  className={`text-[8px] @[768px]:text-[11px] font-bold uppercase tracking-widest mt-1 @[768px]:mt-3 ${mutedText}`}
+                >
+                  {block.data.label || "Metric"}
+                </p>
+              </motion.div>
+            );
+          }
+
+          // 📝 6. Text Block
+          if (block.type === "text") {
+            return (
+              <motion.div
+                key={block.id}
+                variants={blockVariants}
+                layout
+                whileHover={{ scale: 1.01 }}
+                className={`${baseClasses} p-5 @[768px]:p-8 justify-center`}
+              >
+                {block.data.title && (
+                  <h3
+                    className={`text-[9px] @[768px]:text-xs font-black uppercase tracking-widest mb-2 @[768px]:mb-3 opacity-50 ${textColor}`}
+                  >
+                    {block.data.title}
+                  </h3>
+                )}
+                <p
+                  className={`text-sm @[768px]:text-lg font-medium leading-relaxed ${textColor}`}
+                >
+                  {block.data.bio || "Add your text or favorite quote here."}
+                </p>
+              </motion.div>
+            );
+          }
+
+          // 📍 7. Location Block
+          if (block.type === "location") {
+            // ✅ الحل السحري لتخطي خطأ الـ TypeScript هنا
+            const locData = block.data as {
+              lat?: number;
+              lng?: number;
+              label?: string;
+            };
+            const lat = locData.lat ?? 29.95;
+            const lng = locData.lng ?? 31.0;
+
+            return (
+              <motion.div
+                key={block.id}
+                variants={blockVariants}
+                layout
+                whileHover={{ scale: 1.02 }}
+                className={`${baseClasses} p-4 @[768px]:p-6 justify-end overflow-hidden group`}
+              >
+                <LocationGlobe lat={lat} lng={lng} isDark={isTemplateDark} />
+                <div className="absolute inset-0 opacity-20 dark:opacity-40 group-hover:opacity-30 transition-opacity bg-linear-to-t from-slate-900/80 to-transparent" />
+                <div className="absolute top-4 right-4 @[768px]:top-6 @[768px]:right-6 p-2 rounded-full bg-slate-100 dark:bg-white/10 backdrop-blur-md">
+                  <MapPin className={textColor} size={16} />
+                </div>
+                <div className="relative z-10 bg-white/10 dark:bg-black/20 backdrop-blur-md p-3 @[768px]:p-4 rounded-2xl border border-white/10">
+                  <p
+                    className={`text-[7px] @[768px]:text-[9px] font-bold uppercase tracking-widest ${mutedText} mb-0.5`}
+                  >
+                    Based In
+                  </p>
+                  <h3
+                    className={`text-sm @[768px]:text-base font-black uppercase tracking-tight ${textColor} truncate`}
+                  >
+                    {block.data.label || "Earth"}
+                  </h3>
+                </div>
+              </motion.div>
+            );
+          }
+
+          // 🎧 8. Music Block
+          if (block.type === "music") {
+            const spotifyEmbedUrl = getSpotifyEmbedUrl(
+              block.data.url,
+              isTemplateDark,
+            );
+
+            if (spotifyEmbedUrl) {
+              return (
+                <motion.div
+                  key={block.id}
+                  variants={blockVariants}
+                  layout
+                  whileHover={{ scale: 1.01, y: -2 }}
+                  className={`${baseClasses} p-0 overflow-hidden relative group`}
+                  style={{
+                    backgroundColor: isTemplateDark ? "#121212" : "#f8f8f8",
+                  }}
+                >
+                  <iframe
+                    src={spotifyEmbedUrl}
+                    className="absolute inset-0 w-full h-full border-0"
+                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                    loading="lazy"
+                    style={{ borderRadius: "inherit" }}
+                  />
+                </motion.div>
+              );
+            }
+
+            return (
+              <motion.div
+                key={block.id}
+                variants={blockVariants}
+                layout
+                className={`${baseClasses} p-4 @[768px]:p-6 flex flex-col justify-center items-center group cursor-default`}
+              >
+                <div className="p-4 rounded-full bg-green-500/10 mb-3">
+                  <Music className="text-green-500" size={24} />
+                </div>
+                <h3
+                  className={`text-xs @[768px]:text-sm font-black text-green-500`}
+                >
+                  Spotify Track
+                </h3>
+                <p
+                  className={`text-[8px] @[768px]:text-[10px] font-bold uppercase mt-1 opacity-50 ${mutedText}`}
+                >
+                  Add link in editor
+                </p>
+              </motion.div>
             );
           }
 
