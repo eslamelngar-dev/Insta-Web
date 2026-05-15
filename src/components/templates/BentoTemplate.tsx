@@ -506,7 +506,7 @@ export default function BentoTemplate({
                     src={spotifyEmbedUrl}
                     className="absolute inset-0 w-full h-full border-0"
                     allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                    allowtransparency="true"
+                    allowTransparency={true}
                     loading="lazy"
                     style={{
                       borderRadius: "inherit",

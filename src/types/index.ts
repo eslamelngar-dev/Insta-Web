@@ -1,5 +1,14 @@
 import React from "react";
 
+export type PlanType = "free" | "pro" | "business";
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  plan: PlanType;
+  created_at: string;
+}
+
 export interface SocialLink {
   id: string;
   platform: string;

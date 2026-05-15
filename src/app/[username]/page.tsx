@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import SiteRenderer from "@/components/SiteRenderer";
 import { Block } from "@/types";
+import { AlertTriangle } from "lucide-react";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,10 +23,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .eq("username", username)
     .single();
 
-  if (!site || !site.is_published) {
+  if (!site) {
     return {
       title: "Not Found | Instaweb",
-      description: "This page does not exist or is not published yet.",
+      description: "This page does not exist.",
+    };
+  }
+
+  if (!site.is_published) {
+    return {
+      title: "Site Offline | Instaweb",
+      description: "This site is currently offline or under maintenance.",
     };
   }
 
@@ -86,8 +94,27 @@ export default async function UserSite({ params }: Props) {
     .eq("username", username)
     .single();
 
-  if (!site || !site.is_published) {
+  if (!site) {
     notFound();
+  }
+
+  if (!site.is_published) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white font-sans p-4">
+        <div className="max-w-md w-full text-center space-y-6">
+          <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center mx-auto border border-white/10 shadow-2xl shadow-indigo-500/20">
+            <AlertTriangle size={40} className="text-indigo-400" />
+          </div>
+          <h1 className="text-3xl font-black uppercase tracking-tight">
+            Site Offline
+          </h1>
+          <p className="text-slate-400 text-sm font-medium leading-relaxed">
+            This digital node is currently unpublished or undergoing
+            maintenance. Please check back later.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (

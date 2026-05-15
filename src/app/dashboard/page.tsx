@@ -17,6 +17,7 @@ import {
   Pencil,
   Share2,
   Copy,
+  Settings,
 } from "lucide-react";
 import { FaWhatsapp, FaTwitter, FaFacebook, FaLinkedin } from "react-icons/fa";
 import Link from "next/link";
@@ -265,44 +266,59 @@ export default function Dashboard() {
                     </p>
 
                     <div className="flex flex-wrap gap-2 sm:gap-3 mt-auto relative z-20">
-                      <Link
-                        href={`/dashboard/editor/${site.id}`}
-                        className="flex-1 min-w-20 py-3 sm:py-4 bg-slate-50 dark:bg-white/5 rounded-xl text-center text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white hover:border-indigo-600 dark:hover:bg-indigo-600 transition-all border border-slate-100 dark:border-white/5 flex items-center justify-center gap-1.5"
-                      >
-                        <Pencil size={14} /> Edit
-                      </Link>
+                      <div className="w-full flex gap-2">
+                        <Link
+                          href={`/dashboard/editor/${site.id}`}
+                          className="flex-1 py-3 sm:py-4 bg-slate-50 dark:bg-white/5 rounded-xl text-center text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white hover:border-indigo-600 dark:hover:bg-indigo-600 transition-all border border-slate-100 dark:border-white/5 flex items-center justify-center gap-1.5"
+                        >
+                          <Pencil size={14} /> Edit
+                        </Link>
 
-                      <Link
-                        href={`/dashboard/analytics/${site.id}`}
-                        className="flex-1 min-w-20 py-3 sm:py-4 bg-slate-50 dark:bg-white/5 rounded-xl text-center text-[10px] font-black uppercase tracking-widest hover:bg-purple-600 hover:text-white hover:border-purple-600 dark:hover:bg-purple-600 transition-all border border-slate-100 dark:border-white/5 flex items-center justify-center gap-1.5"
-                      >
-                        <Activity size={14} /> Stats
-                      </Link>
+                        <Link
+                          href={`/dashboard/analytics/${site.id}`}
+                          className="flex-1 py-3 sm:py-4 bg-slate-50 dark:bg-white/5 rounded-xl text-center text-[10px] font-black uppercase tracking-widest hover:bg-purple-600 hover:text-white hover:border-purple-600 dark:hover:bg-purple-600 transition-all border border-slate-100 dark:border-white/5 flex items-center justify-center gap-1.5"
+                        >
+                          <Activity size={14} /> Stats
+                        </Link>
 
-                      <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                        <Link
+                          href={`/dashboard/settings/${site.id}`}
+                          className="flex-1 py-3 sm:py-4 bg-slate-50 dark:bg-white/5 rounded-xl text-center text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 hover:text-white hover:border-slate-800 dark:hover:bg-white/10 transition-all border border-slate-100 dark:border-white/5 flex items-center justify-center gap-1.5"
+                        >
+                          <Settings size={14} /> Settings
+                        </Link>
+                      </div>
+
+                      <div className="flex gap-2 w-full mt-2">
                         {site.is_published ? (
                           <>
                             <button
                               onClick={() => openShareModal(site)}
-                              className="flex-1 sm:flex-none p-3 sm:p-4 bg-slate-50 dark:bg-white/5 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-600 hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-all border border-slate-100 dark:border-white/5 text-slate-400 group/link shrink-0 flex justify-center"
+                              className="flex-1 p-3 sm:p-4 bg-slate-50 dark:bg-white/5 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-600 hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-all border border-slate-100 dark:border-white/5 text-slate-400 group/link flex justify-center items-center gap-2"
                               title="Share Site"
                             >
                               <Share2
-                                size={18}
+                                size={16}
                                 className="group-hover/link:scale-110 transition-transform"
                               />
+                              <span className="text-[10px] font-black uppercase tracking-widest sm:hidden">
+                                Share
+                              </span>
                             </button>
                             <a
                               href={siteUrl}
                               target="_blank"
                               rel="noreferrer"
-                              className="flex-1 sm:flex-none p-3 sm:p-4 bg-slate-50 dark:bg-white/5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 transition-all border border-slate-100 dark:border-white/5 text-slate-400 hover:text-slate-900 dark:hover:text-white group/link shrink-0 flex justify-center"
+                              className="flex-1 p-3 sm:p-4 bg-slate-50 dark:bg-white/5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 transition-all border border-slate-100 dark:border-white/5 text-slate-400 hover:text-slate-900 dark:hover:text-white group/link flex justify-center items-center gap-2"
                               title="Visit Site"
                             >
                               <ExternalLink
-                                size={18}
+                                size={16}
                                 className="group-hover/link:scale-110 transition-transform"
                               />
+                              <span className="text-[10px] font-black uppercase tracking-widest sm:hidden">
+                                Visit
+                              </span>
                             </a>
                           </>
                         ) : (
