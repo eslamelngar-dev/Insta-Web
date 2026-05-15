@@ -68,7 +68,7 @@ export default function SettingsPage() {
       </div>
 
       <div className="mt-8 md:mt-12 flex justify-center sm:justify-end">
-        <button className="w-full sm:w-auto px-8 sm:px-12 py-4 sm:py-5 bg-indigo-600 text-white rounded-xl sm:rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] hover:bg-indigo-500 transition-all shadow-2xl shadow-indigo-600/30 flex items-center justify-center gap-2">
+        <button className="w-full sm:w-auto px-8 sm:px-12 py-4 sm:py-5 bg-indigo-600 text-white rounded-xl sm:rounded-4xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-indigo-500 transition-all shadow-2xl shadow-indigo-600/30 flex items-center justify-center gap-2">
           <Save size={18} /> Save Changes
         </button>
       </div>

@@ -16,14 +16,18 @@ import {
   X,
   Save,
   Loader2,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
+import { deleteSiteAction } from "@/app/actions/site";
 
 interface Site {
   id: string;
   title: string;
   username: string;
   is_published: boolean;
+  user_id?: string;
 }
 
 export default function SiteSettings({
@@ -42,6 +46,13 @@ export default function SiteSettings({
 
   const [title, setTitle] = useState("");
   const [username, setUsername] = useState("");
+
+  const [usernameStatus, setUsernameStatus] = useState<
+    "idle" | "checking" | "available" | "taken"
+  >("idle");
+
+  const effectiveUsernameStatus =
+    !username || username.trim() === "" ? "idle" : usernameStatus;
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [confirmName, setConfirmName] = useState("");
@@ -82,7 +93,7 @@ export default function SiteSettings({
         return;
       }
 
-      setSite(siteData);
+      setSite({ ...siteData, user_id: user.id });
       setTitle(siteData.title);
       setUsername(siteData.username);
       setLoading(false);
@@ -91,28 +102,16 @@ export default function SiteSettings({
     fetchSiteAndUser();
   }, [siteId, router]);
 
-  const handleUpdateGeneral = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!site) return;
-    setSaving(true);
+  useEffect(() => {
+    if (!username || username.trim() === "") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setUsernameStatus("idle");
+      return;
+    }
 
-    try {
-      if (title.trim().length < 2) {
-        throw new Error("Site title must be at least 2 characters long.");
-      }
-
+    const timer = setTimeout(async () => {
+      setUsernameStatus("checking");
       const cleanUsername = username.toLowerCase().trim();
-
-      if (cleanUsername.length < 3 || cleanUsername.length > 30) {
-        throw new Error("Username must be between 3 and 30 characters.");
-      }
-
-      const usernameRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
-      if (!usernameRegex.test(cleanUsername)) {
-        throw new Error(
-          "Username can only contain lowercase letters, numbers, and hyphens, and cannot start or end with a hyphen.",
-        );
-      }
 
       const reservedWords = [
         "admin",
@@ -133,21 +132,55 @@ export default function SiteSettings({
         "auth",
         "home",
       ];
-
       if (reservedWords.includes(cleanUsername)) {
-        throw new Error("This username is reserved and cannot be used.");
+        setUsernameStatus("taken");
+        return;
       }
 
-      if (cleanUsername !== site.username) {
-        const { data: existingSite } = await supabase
-          .from("sites")
-          .select("id")
-          .eq("username", cleanUsername)
-          .single();
+      const { data: existingSite } = await supabase
+        .from("sites")
+        .select("id")
+        .eq("username", cleanUsername)
+        .neq("id", siteId)
+        .maybeSingle();
 
-        if (existingSite) {
-          throw new Error("This username is already taken by another user.");
-        }
+      setUsernameStatus(existingSite ? "taken" : "available");
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [username, siteId]);
+
+  const handleUpdateGeneral = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!site) return;
+
+    if (effectiveUsernameStatus === "taken") {
+      toast.error("Please choose an available username.");
+      return;
+    }
+    if (effectiveUsernameStatus === "checking") {
+      toast.error("Please wait while we check username availability.");
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      if (title.trim().length < 2) {
+        throw new Error("Site title must be at least 2 characters long.");
+      }
+
+      const cleanUsername = username.toLowerCase().trim();
+
+      if (cleanUsername.length < 3 || cleanUsername.length > 30) {
+        throw new Error("Username must be between 3 and 30 characters.");
+      }
+
+      const usernameRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
+      if (!usernameRegex.test(cleanUsername)) {
+        throw new Error(
+          "Username can only contain lowercase letters, numbers, and hyphens, and cannot start or end with a hyphen.",
+        );
       }
 
       const { error } = await supabase
@@ -183,7 +216,6 @@ export default function SiteSettings({
     }
 
     const newStatus = !site.is_published;
-
     setSite({ ...site, is_published: newStatus });
 
     try {
@@ -205,16 +237,20 @@ export default function SiteSettings({
   };
 
   const handleDelete = async () => {
-    if (!site || confirmName !== site.title) return;
+    if (!site || confirmName !== site.title || !site.user_id) return;
     setIsDeleting(true);
     try {
-      const { error } = await supabase.from("sites").delete().eq("id", site.id);
-      if (error) throw error;
-      toast.success("Site deleted successfully");
+      const result = await deleteSiteAction(site.id, site.user_id);
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      toast.success("Site and all associated files deleted successfully");
       router.push("/dashboard");
     } catch (error: unknown) {
       if (error instanceof Error) {
         toast.error(error.message);
+      } else {
+        toast.error("An unexpected error occurred");
       }
       setIsDeleting(false);
     }
@@ -263,42 +299,84 @@ export default function SiteSettings({
             </div>
 
             <form onSubmit={handleUpdateGeneral} className="space-y-6">
-              <div>
-                <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">
+              <div className="space-y-2">
+                <p className="text-[9px] font-bold text-slate-400 ml-2 uppercase tracking-widest">
                   Site Title
-                </label>
+                </p>
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-white/5 rounded-xl sm:rounded-2xl px-4 sm:px-5 py-3 sm:py-4 text-sm font-bold shadow-sm outline-none focus:border-indigo-500 transition-all"
                   required
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">
-                  Username (URL)
-                </label>
-                <div className="flex">
-                  <span className="inline-flex items-center px-4 rounded-l-xl border border-r-0 border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-slate-800 text-slate-500 text-sm font-bold">
-                    instaweb.me/
-                  </span>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-[9px] font-bold text-slate-400 ml-2 uppercase tracking-widest">
+                    URL USERNAME
+                  </p>
+                  {effectiveUsernameStatus === "checking" && (
+                    <Loader2
+                      size={12}
+                      className="animate-spin text-indigo-500"
+                    />
+                  )}
+                  {effectiveUsernameStatus === "available" && (
+                    <span className="text-[9px] font-bold text-green-500 uppercase tracking-widest">
+                      AVAILABLE
+                    </span>
+                  )}
+                  {effectiveUsernameStatus === "taken" && (
+                    <span className="text-[9px] font-bold text-red-500 uppercase tracking-widest">
+                      TAKEN
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
                   <input
                     type="text"
                     value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-r-xl px-4 py-3 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
+                    onChange={(e) =>
+                      setUsername(
+                        e.target.value.replace(/\s+/g, "-").toLowerCase(),
+                      )
+                    }
+                    placeholder="yourname"
+                    className={`w-full bg-slate-50 dark:bg-slate-950 border rounded-xl sm:rounded-2xl px-4 sm:px-5 py-3 sm:py-4 text-sm font-black outline-none shadow-sm transition-all focus:ring-2 ${
+                      effectiveUsernameStatus === "taken"
+                        ? "border-red-500 focus:ring-red-500/20 text-red-500"
+                        : effectiveUsernameStatus === "available"
+                          ? "border-green-500 focus:ring-green-500/20"
+                          : "border-slate-100 dark:border-white/5 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    }`}
                     required
                   />
+                  {effectiveUsernameStatus === "taken" && (
+                    <AlertCircle
+                      size={16}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500"
+                    />
+                  )}
+                  {effectiveUsernameStatus === "available" && (
+                    <CheckCircle2
+                      size={16}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-green-500"
+                    />
+                  )}
                 </div>
               </div>
 
               <div className="pt-4 flex justify-end">
                 <button
                   type="submit"
-                  disabled={saving}
-                  className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-indigo-500 transition-all disabled:opacity-50"
+                  disabled={
+                    saving ||
+                    effectiveUsernameStatus === "taken" ||
+                    effectiveUsernameStatus === "checking"
+                  }
+                  className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-widest hover:bg-indigo-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-indigo-600/20"
                 >
                   {saving ? (
                     <Loader2 size={16} className="animate-spin" />
@@ -324,19 +402,19 @@ export default function SiteSettings({
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 sm:p-6 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-white/5">
               <div>
-                <p className="font-bold text-sm mb-1">
+                <p className="font-bold text-sm mb-1 flex items-center">
                   Current Status:{" "}
                   {site.is_published ? (
-                    <span className="text-green-500 uppercase tracking-widest text-[10px] ml-2">
+                    <span className="text-green-500 uppercase tracking-widest text-[10px] ml-2 font-black bg-green-500/10 px-2 py-1 rounded-md">
                       Live
                     </span>
                   ) : (
-                    <span className="text-slate-500 uppercase tracking-widest text-[10px] ml-2">
+                    <span className="text-slate-500 uppercase tracking-widest text-[10px] ml-2 font-black bg-slate-200 dark:bg-slate-800 px-2 py-1 rounded-md">
                       Offline (Draft)
                     </span>
                   )}
                 </p>
-                <p className="text-xs text-slate-500 font-medium">
+                <p className="text-xs text-slate-500 font-medium mt-1">
                   {site.is_published
                     ? "Your site is publicly accessible via its URL."
                     : "Your site is hidden from the public."}

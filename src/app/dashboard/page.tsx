@@ -24,6 +24,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
+import { deleteSiteAction } from "@/app/actions/site";
 
 interface Site {
   id: string;
@@ -32,6 +33,7 @@ interface Site {
   primary_color: string;
   created_at: string;
   is_published: boolean;
+  user_id?: string;
 }
 
 export default function Dashboard() {
@@ -58,7 +60,7 @@ export default function Dashboard() {
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
-      if (data) setSites(data);
+      if (data) setSites(data.map((d) => ({ ...d, user_id: user.id })));
     }
     setLoading(false);
   }, []);
@@ -84,20 +86,29 @@ export default function Dashboard() {
   };
 
   const handleDelete = async () => {
-    if (!siteToDelete || confirmName !== siteToDelete.title) return;
+    if (
+      !siteToDelete ||
+      confirmName !== siteToDelete.title ||
+      !siteToDelete.user_id
+    )
+      return;
     setIsDeleting(true);
     try {
-      const { error } = await supabase
-        .from("sites")
-        .delete()
-        .eq("id", siteToDelete.id);
-      if (error) throw error;
+      const result = await deleteSiteAction(
+        siteToDelete.id,
+        siteToDelete.user_id,
+      );
+      if (!result.success) {
+        throw new Error(result.error);
+      }
       setSites(sites.filter((s) => s.id !== siteToDelete.id));
       toast.success("Project terminated successfully");
       closeDeleteModal();
     } catch (error: unknown) {
       if (error instanceof Error) {
         toast.error(error.message);
+      } else {
+        toast.error("An unexpected error occurred");
       }
     } finally {
       setIsDeleting(false);
@@ -373,8 +384,7 @@ export default function Dashboard() {
                 <span className="text-slate-900 dark:text-white font-black underline decoration-red-500">
                   &quot;{siteToDelete?.title}&quot;
                 </span>
-                . This will purge all associated data. This action cannot be
-                undone.
+                . This action cannot be undone.
               </p>
               <div className="space-y-3 sm:space-y-4 mb-6 sm:mb-10">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
