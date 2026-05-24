@@ -5,7 +5,12 @@ import { Pencil, Eye } from "lucide-react";
 import { EditorSidebar } from "./EditorSidebar";
 import { Icons, ButtonIcons } from "@/constants/icons";
 import { TEMPLATES_REGISTRY } from "@/lib/templates-registry";
-import type { SiteData, SiteContent, SaveStatus, UsernameStatus } from "@/types/editor";
+import type {
+  SiteData,
+  SiteContent,
+  SaveStatus,
+  UsernameStatus,
+} from "@/types/editor";
 
 interface Props {
   data: SiteData;
@@ -13,16 +18,24 @@ interface Props {
   usernameStatus: UsernameStatus;
   loading: boolean;
   uploadingId: string | null;
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
   onUsernameChange: (val: string) => void;
   updateContent: (updates: Partial<SiteContent>) => void;
-  handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>, target?: string) => void;
+  handleImageUpload: (
+    e: React.ChangeEvent<HTMLInputElement>,
+    target?: string,
+  ) => void;
   onSaveClick: () => void;
 }
 
 export function MobileEditor(props: Props) {
   const [mobileTab, setMobileTab] = useState<"edit" | "preview">("edit");
 
-  const TemplateConfig = TEMPLATES_REGISTRY[props.data.template_id] ?? TEMPLATES_REGISTRY.classic;
+  const TemplateConfig =
+    TEMPLATES_REGISTRY[props.data.template_id] ?? TEMPLATES_REGISTRY.classic;
   const ActiveTemplate = TemplateConfig.component;
 
   return (
@@ -52,7 +65,9 @@ export function MobileEditor(props: Props) {
         <button
           onClick={() => setMobileTab("edit")}
           className={`flex-1 flex items-center justify-center gap-2 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${
-            mobileTab === "edit" ? "text-indigo-600 bg-indigo-50 dark:bg-indigo-500/10" : "text-slate-400"
+            mobileTab === "edit"
+              ? "text-indigo-600 bg-indigo-50 dark:bg-indigo-500/10"
+              : "text-slate-400"
           }`}
         >
           <Pencil size={16} /> Edit
@@ -60,7 +75,9 @@ export function MobileEditor(props: Props) {
         <button
           onClick={() => setMobileTab("preview")}
           className={`flex-1 flex items-center justify-center gap-2 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${
-            mobileTab === "preview" ? "text-indigo-600 bg-indigo-50 dark:bg-indigo-500/10" : "text-slate-400"
+            mobileTab === "preview"
+              ? "text-indigo-600 bg-indigo-50 dark:bg-indigo-500/10"
+              : "text-slate-400"
           }`}
         >
           <Eye size={16} /> Preview

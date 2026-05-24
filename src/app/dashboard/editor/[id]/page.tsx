@@ -1,16 +1,16 @@
 "use client";
 
-import { use, useState, useRef, useCallback } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { use, useState, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { EditorLayout } from "@/components/editor/layout/EditorLayout";
-import { ConfirmModal } from "@/components/editor/modals/ConfirmModal";
 import { useEditorInit } from "@/hooks/editor/useEditorInit";
 import { useUsernameValidation } from "@/hooks/editor/useUsernameValidation";
 import { useImageUpload } from "@/hooks/editor/useImageUpload";
 import { useSaveToDatabase } from "@/hooks/editor/useSaveToDatabase";
 import { useAutoSave } from "@/hooks/editor/useAutoSave";
+import { useKeyboardShortcuts } from "@/hooks/editor/useKeyboardShortcuts";
 import type { SiteContent, SaveStatus } from "@/types/editor";
 
 export default function EditorPage({
@@ -19,7 +19,6 @@ export default function EditorPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const router = useRouter();
   const searchParams = useSearchParams();
   const templateId = searchParams.get("template") ?? "classic";
 
@@ -29,18 +28,22 @@ export default function EditorPage({
 
   const siteIdRef = useRef<string>(id);
 
-  const { data, setData, isReady } = useEditorInit(id, templateId);
+  const { data, setData, isReady, undo, redo, canUndo, canRedo } =
+    useEditorInit(id, templateId);
 
   const { status: usernameStatus } = useUsernameValidation(
-    data.username,
+    data?.username ?? "",
     siteIdRef.current,
   );
 
   const updateContent = (updates: Partial<SiteContent>) =>
-    setData((prev) => ({ ...prev, content: { ...prev.content, ...updates } }));
+    setData((prev) => ({
+      ...prev,
+      content: { ...prev.content, ...updates },
+    }));
 
   const { uploadingId, handleImageUpload } = useImageUpload(
-    data.content,
+    data?.content ?? {},
     updateContent,
   );
 
@@ -53,12 +56,14 @@ export default function EditorPage({
 
   useAutoSave(isReady, data, saveToDatabase, usernameStatus, setSaveStatus);
 
+  useKeyboardShortcuts({ onUndo: undo, onRedo: redo, canUndo, canRedo });
+
   const handleSaveClick = () => {
     if (usernameStatus === "taken") {
       toast.error("Please choose an available username before saving.");
       return;
     }
-    if (!data.username) {
+    if (!data?.username) {
       toast.error("Please enter a username first.");
       return;
     }
@@ -79,7 +84,7 @@ export default function EditorPage({
     setShowConfirmModal(false);
   };
 
-  if (!isReady) {
+  if (!isReady || !data) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-slate-50 dark:bg-slate-950">
         <div className="flex flex-col items-center gap-4">
@@ -100,6 +105,10 @@ export default function EditorPage({
       loading={loading}
       uploadingId={uploadingId}
       showConfirmModal={showConfirmModal}
+      canUndo={canUndo}
+      canRedo={canRedo}
+      onUndo={undo}
+      onRedo={redo}
       onUsernameChange={(val) =>
         setData((prev) => ({ ...prev, username: val }))
       }

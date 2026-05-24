@@ -8,14 +8,26 @@ import {
   Globe,
   FileText,
 } from "lucide-react";
+import { UndoRedoBar } from "./UndoRedoBar";
 import type { SaveStatus } from "@/types/editor";
 
 interface Props {
   saveStatus: SaveStatus;
   isPublished: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
 }
 
-export function EditorHeader({ saveStatus, isPublished }: Props) {
+export function EditorHeader({
+  saveStatus,
+  isPublished,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
+}: Props) {
   return (
     <div className="p-4 sm:p-6 lg:p-8 border-b border-slate-100 dark:border-white/5 flex items-center justify-between bg-white dark:bg-slate-900/50 shrink-0">
       <div className="flex items-center gap-3 sm:gap-4">
@@ -69,6 +81,13 @@ export function EditorHeader({ saveStatus, isPublished }: Props) {
           </div>
         </div>
       </div>
+
+      <UndoRedoBar
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={onUndo}
+        onRedo={onRedo}
+      />
     </div>
   );
 }

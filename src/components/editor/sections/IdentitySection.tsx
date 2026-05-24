@@ -11,7 +11,21 @@ interface Props {
   updateContent: (updates: Partial<SiteContent>) => void;
 }
 
-export function IdentitySection({ username, onUsernameChange, usernameStatus, content, updateContent }: Props) {
+function sanitizeUsername(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]/g, "")
+    .replace(/^[.-]/, "")
+    .slice(0, 30);
+}
+
+export function IdentitySection({
+  username,
+  onUsernameChange,
+  usernameStatus,
+  content,
+  updateContent,
+}: Props) {
   return (
     <section className="space-y-6 sm:space-y-8">
       <div className="flex items-center gap-2 px-1">
@@ -24,17 +38,33 @@ export function IdentitySection({ username, onUsernameChange, usernameStatus, co
       <div className="space-y-4 sm:space-y-5">
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-[9px] font-bold text-slate-400 ml-2">URL USERNAME</p>
-            {usernameStatus === "checking" && <Loader2 size={12} className="animate-spin text-indigo-500" />}
-            {usernameStatus === "available" && <span className="text-[9px] font-bold text-green-500">AVAILABLE</span>}
-            {usernameStatus === "taken" && <span className="text-[9px] font-bold text-red-500">TAKEN</span>}
+            <p className="text-[9px] font-bold text-slate-400 ml-2">
+              URL USERNAME
+            </p>
+            {usernameStatus === "checking" && (
+              <Loader2 size={12} className="animate-spin text-indigo-500" />
+            )}
+            {usernameStatus === "available" && (
+              <span className="text-[9px] font-bold text-green-500">
+                AVAILABLE
+              </span>
+            )}
+            {usernameStatus === "taken" && (
+              <span className="text-[9px] font-bold text-red-500">TAKEN</span>
+            )}
           </div>
           <div className="relative">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-300 dark:text-slate-600 pointer-events-none select-none">
+              nexus.com/
+            </div>
             <input
               value={username}
-              onChange={(e) => onUsernameChange(e.target.value.replace(/\s+/g, "-").toLowerCase())}
+              onChange={(e) =>
+                onUsernameChange(sanitizeUsername(e.target.value))
+              }
               placeholder="yourname"
-              className={`w-full bg-white dark:bg-slate-900 border rounded-xl sm:rounded-2xl px-4 sm:px-5 py-3 sm:py-4 text-sm font-black outline-none shadow-sm transition-all focus:ring-2 ${
+              maxLength={30}
+              className={`w-full bg-white dark:bg-slate-900 border rounded-xl sm:rounded-2xl pl-22 pr-10 py-3 sm:py-4 text-sm font-black outline-none shadow-sm transition-all focus:ring-2 ${
                 usernameStatus === "taken"
                   ? "border-red-500 focus:ring-red-500/20 text-red-500"
                   : usernameStatus === "available"
@@ -42,9 +72,22 @@ export function IdentitySection({ username, onUsernameChange, usernameStatus, co
                     : "border-slate-100 dark:border-white/5 focus:ring-indigo-500/20 focus:border-indigo-500"
               }`}
             />
-            {usernameStatus === "taken" && <AlertCircle size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500" />}
-            {usernameStatus === "available" && <CheckCircle2 size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-green-500" />}
+            {usernameStatus === "taken" && (
+              <AlertCircle
+                size={16}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500"
+              />
+            )}
+            {usernameStatus === "available" && (
+              <CheckCircle2
+                size={16}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-green-500"
+              />
+            )}
           </div>
+          <p className="text-[8px] text-slate-400 font-bold ml-2">
+            Only lowercase letters, numbers, dots, hyphens and underscores.
+          </p>
         </div>
 
         <div className="space-y-2">
@@ -53,7 +96,9 @@ export function IdentitySection({ username, onUsernameChange, usernameStatus, co
             <button
               onClick={() => updateContent({ theme_mode: "light" })}
               className={`py-3 sm:py-3.5 rounded-lg sm:rounded-xl text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2 ${
-                content.theme_mode === "light" ? "bg-indigo-600 text-white shadow-xl shadow-indigo-600/20" : "text-slate-400"
+                content.theme_mode === "light"
+                  ? "bg-indigo-600 text-white shadow-xl shadow-indigo-600/20"
+                  : "text-slate-400"
               }`}
             >
               <Sun size={14} /> Light
@@ -61,7 +106,9 @@ export function IdentitySection({ username, onUsernameChange, usernameStatus, co
             <button
               onClick={() => updateContent({ theme_mode: "dark" })}
               className={`py-3 sm:py-3.5 rounded-lg sm:rounded-xl text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2 ${
-                content.theme_mode === "dark" ? "bg-indigo-600 text-white shadow-xl shadow-indigo-600/20" : "text-slate-400"
+                content.theme_mode === "dark"
+                  ? "bg-indigo-600 text-white shadow-xl shadow-indigo-600/20"
+                  : "text-slate-400"
               }`}
             >
               <Moon size={14} /> Dark
@@ -70,7 +117,9 @@ export function IdentitySection({ username, onUsernameChange, usernameStatus, co
         </div>
 
         <div className="space-y-2">
-          <p className="text-[9px] font-bold text-slate-400 ml-2">ACCENT COLOR</p>
+          <p className="text-[9px] font-bold text-slate-400 ml-2">
+            ACCENT COLOR
+          </p>
           <div className="flex items-center gap-4 bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm">
             <input
               type="color"
@@ -79,8 +128,12 @@ export function IdentitySection({ username, onUsernameChange, usernameStatus, co
               className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl overflow-hidden cursor-pointer bg-transparent border-none p-0"
             />
             <div className="flex flex-col">
-              <span className="text-[10px] font-black uppercase tracking-widest">{content.color ?? "#6366F1"}</span>
-              <span className="text-[9px] font-bold text-slate-400">Accent Branding</span>
+              <span className="text-[10px] font-black uppercase tracking-widest">
+                {content.color ?? "#6366F1"}
+              </span>
+              <span className="text-[9px] font-bold text-slate-400">
+                Accent Branding
+              </span>
             </div>
           </div>
         </div>

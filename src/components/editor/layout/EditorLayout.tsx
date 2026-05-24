@@ -18,6 +18,10 @@ interface Props {
   loading: boolean;
   uploadingId: string | null;
   showConfirmModal: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
   onUsernameChange: (val: string) => void;
   updateContent: (updates: Partial<SiteContent>) => void;
   handleImageUpload: (
@@ -37,6 +41,10 @@ export function EditorLayout({
   loading,
   uploadingId,
   showConfirmModal,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
   onUsernameChange,
   updateContent,
   handleImageUpload,
@@ -51,6 +59,10 @@ export function EditorLayout({
     usernameStatus,
     loading,
     uploadingId,
+    canUndo,
+    canRedo,
+    onUndo,
+    onRedo,
     onUsernameChange,
     updateContent,
     handleImageUpload,

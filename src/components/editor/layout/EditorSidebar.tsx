@@ -20,6 +20,10 @@ interface Props {
   usernameStatus: UsernameStatus;
   loading: boolean;
   uploadingId: string | null;
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
   onUsernameChange: (val: string) => void;
   updateContent: (updates: Partial<SiteContent>) => void;
   handleImageUpload: (
@@ -35,6 +39,10 @@ export function EditorSidebar({
   usernameStatus,
   loading,
   uploadingId,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
   onUsernameChange,
   updateContent,
   handleImageUpload,
@@ -46,7 +54,14 @@ export function EditorSidebar({
 
   return (
     <>
-      <EditorHeader saveStatus={saveStatus} isPublished={data.is_published} />
+      <EditorHeader
+        saveStatus={saveStatus}
+        isPublished={data.is_published}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={onUndo}
+        onRedo={onRedo}
+      />
 
       <div className="flex-1 p-4 sm:p-6 lg:p-10 space-y-8 sm:space-y-12 overflow-y-auto custom-scroll">
         <IdentitySection
