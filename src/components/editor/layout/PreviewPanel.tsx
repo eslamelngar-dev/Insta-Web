@@ -19,37 +19,46 @@ export function PreviewPanel({ data }: Props) {
   const ActiveTemplate = TemplateConfig.component;
 
   return (
-    <main className="flex-1 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 p-6 relative overflow-hidden">
-      <div className="absolute top-10 flex bg-white dark:bg-slate-900 rounded-4xl p-2 shadow-2xl border border-slate-100 dark:border-white/5 z-20">
+    <main className="flex-1 flex flex-col items-center justify-center bg-slate-100/50 dark:bg-slate-950 relative overflow-hidden h-full">
+      <div className="absolute top-6 flex bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-full p-1.5 shadow-2xl border border-slate-200 dark:border-white/5 z-30">
         <button
           onClick={() => setIsMobile(false)}
-          className={`flex items-center gap-2 px-6 py-3 rounded-3xl transition-all text-[10px] font-black uppercase ${
-            !isMobile ? "bg-indigo-600 text-white shadow-xl" : "text-slate-400"
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-full transition-all text-[10px] font-black uppercase tracking-wider ${
+            !isMobile
+              ? "bg-indigo-600 text-white shadow-lg"
+              : "text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5"
           }`}
         >
-          <Monitor size={18} /> Desktop
+          <Monitor size={16} /> Desktop
         </button>
         <button
           onClick={() => setIsMobile(true)}
-          className={`flex items-center gap-2 px-6 py-3 rounded-3xl transition-all text-[10px] font-black uppercase ${
-            isMobile ? "bg-indigo-600 text-white shadow-xl" : "text-slate-400"
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-full transition-all text-[10px] font-black uppercase tracking-wider ${
+            isMobile
+              ? "bg-indigo-600 text-white shadow-lg"
+              : "text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5"
           }`}
         >
-          <Smartphone size={18} /> Mobile
+          <Smartphone size={16} /> Mobile
         </button>
       </div>
 
       <motion.div
+        initial={false}
         animate={{
           width: isMobile ? 420 : "100%",
           height: isMobile ? 880 : "100%",
           borderRadius: isMobile ? "4.5rem" : "0px",
           scale: isMobile ? 0.85 : 1,
         }}
-        transition={{ type: "spring", stiffness: 100, damping: 20 }}
-        className="shadow-2xl border-16 border-slate-200 dark:border-slate-800 relative overflow-hidden flex flex-col items-center bg-white dark:bg-slate-900"
+        transition={{ type: "spring", stiffness: 120, damping: 20 }}
+        className="shadow-[0_0_50px_-12px_rgba(0,0,0,0.15)] border-slate-200 dark:border-slate-800 relative overflow-hidden flex flex-col bg-white dark:bg-slate-900 z-10"
       >
-        <div className="w-full h-full overflow-hidden">
+        <div
+          className={`w-full h-full overflow-y-auto ${
+            isMobile ? "scrollbar-hide" : "custom-scroll"
+          }`}
+        >
           <ActiveTemplate
             site={{ ...data, content: data.content }}
             isDark={data.content.theme_mode === "dark"}
@@ -59,7 +68,7 @@ export function PreviewPanel({ data }: Props) {
         </div>
       </motion.div>
 
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-200 h-200 bg-indigo-500/5 blur-[120px] rounded-full -z-10" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(99,102,241,0.05),transparent_50%)]" />
     </main>
   );
 }

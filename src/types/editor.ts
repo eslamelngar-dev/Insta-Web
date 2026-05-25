@@ -105,3 +105,10 @@ export type SaveToDatabaseFn = (
 export type SaveStatus = "saved" | "saving" | "unsaved";
 export type UsernameStatus = "idle" | "checking" | "available" | "taken";
 export type MobileTab = "edit" | "preview";
+
+export interface MediaFile {
+  name: string;
+  url: string;
+  size: number;
+  created_at: string;
+}

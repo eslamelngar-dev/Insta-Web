@@ -3,13 +3,7 @@
 import { EditorSidebar } from "./EditorSidebar";
 import { PreviewPanel } from "./PreviewPanel";
 import { MobileEditor } from "./MobileEditor";
-import { ConfirmModal } from "../modals/ConfirmModal";
-import type {
-  SiteData,
-  SiteContent,
-  SaveStatus,
-  UsernameStatus,
-} from "@/types/editor";
+import type { SiteData, SaveStatus, UsernameStatus } from "@/types/editor";
 
 interface Props {
   data: SiteData;
@@ -17,76 +11,47 @@ interface Props {
   usernameStatus: UsernameStatus;
   loading: boolean;
   uploadingId: string | null;
-  showConfirmModal: boolean;
   canUndo: boolean;
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
   onUsernameChange: (val: string) => void;
-  updateContent: (updates: Partial<SiteContent>) => void;
-  handleImageUpload: (
-    e: React.ChangeEvent<HTMLInputElement>,
-    target?: string,
-  ) => void;
+  updateContent: (updates: Partial<any>) => void;
+  handleImageUpload: (e: any, target?: string) => void;
   onSaveClick: () => void;
-  onCloseModal: () => void;
-  onSaveAsDraft: () => void;
-  onPublish: () => void;
+  mediaLibrary: any;
+  onMediaSelect: (url: string, target?: string) => void;
 }
 
-export function EditorLayout({
-  data,
-  saveStatus,
-  usernameStatus,
-  loading,
-  uploadingId,
-  showConfirmModal,
-  canUndo,
-  canRedo,
-  onUndo,
-  onRedo,
-  onUsernameChange,
-  updateContent,
-  handleImageUpload,
-  onSaveClick,
-  onCloseModal,
-  onSaveAsDraft,
-  onPublish,
-}: Props) {
-  const sharedProps = {
-    data,
-    saveStatus,
-    usernameStatus,
-    loading,
-    uploadingId,
-    canUndo,
-    canRedo,
-    onUndo,
-    onRedo,
-    onUsernameChange,
-    updateContent,
-    handleImageUpload,
-    onSaveClick,
+export function EditorLayout(props: Props) {
+  const mediaLib = props.mediaLibrary;
+
+  const combinedProps = {
+    ...props,
+    isMediaOpen: mediaLib.isOpen,
+    mediaFiles: mediaLib.files,
+    isMediaLoading: mediaLib.isLoading,
+    isMediaUploading: mediaLib.isUploading,
+    deletingMediaName: mediaLib.deletingName,
+    onCloseMediaLibrary: mediaLib.close,
+    onUploadMediaFile: mediaLib.uploadFile,
+    onSelectMediaFile: mediaLib.selectFile,
+    onDeleteMediaFile: mediaLib.deleteFile,
+    onOpenMediaLibrary: mediaLib.open,
   };
 
   return (
-    <>
-      <ConfirmModal
-        isOpen={showConfirmModal}
-        onClose={onCloseModal}
-        onSaveAsDraft={onSaveAsDraft}
-        onPublish={onPublish}
-        loading={loading}
-      />
-
-      <div className="h-screen bg-white dark:bg-slate-950 hidden lg:flex overflow-hidden text-slate-900 dark:text-white transition-colors duration-500 font-sans">
-        <aside className="w-120 border-r border-slate-100 dark:border-white/5 flex flex-col bg-slate-50/30 dark:bg-slate-900/30 backdrop-blur-3xl overflow-hidden shadow-2xl z-30">
-          <EditorSidebar {...sharedProps} />
-        </aside>
-        <PreviewPanel data={data} />
+    <div className="h-screen flex flex-col lg:flex-row overflow-hidden bg-white dark:bg-slate-950 font-sans">
+     
+      <div className="w-full lg:w-115 xl:w-120 h-full shrink-0 border-r border-slate-200 dark:border-white/5 bg-white dark:bg-slate-950 z-20 shadow-xl">
+        <EditorSidebar {...combinedProps} />
       </div>
 
-      <MobileEditor {...sharedProps} />
-    </>
+      <div className="flex-1 h-full overflow-hidden hidden lg:block bg-slate-50 dark:bg-slate-950">
+        <PreviewPanel data={props.data} />
+      </div>
+
+      <MobileEditor {...combinedProps} />
+    </div>
   );
 }

@@ -16,6 +16,8 @@ interface Props {
     target?: string,
   ) => void;
   uploadingId: string | null;
+  onOpenMediaLibrary: (onSelect: (url: string) => void) => void;
+  onMediaSelect: (url: string, target?: string) => void;
 }
 
 export function NexusSection({
@@ -23,6 +25,8 @@ export function NexusSection({
   updateContent,
   handleImageUpload,
   uploadingId,
+  onOpenMediaLibrary,
+  onMediaSelect,
 }: Props) {
   return (
     <div className="space-y-8 sm:space-y-12 pb-32">
@@ -34,6 +38,8 @@ export function NexusSection({
         updateContent={updateContent}
         handleImageUpload={handleImageUpload}
         uploadingId={uploadingId}
+        onOpenMediaLibrary={onOpenMediaLibrary}
+        onMediaSelect={onMediaSelect}
       />
       <TestimonialSection content={content} updateContent={updateContent} />
       <ContactSection content={content} updateContent={updateContent} />

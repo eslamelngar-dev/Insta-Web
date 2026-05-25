@@ -10,6 +10,7 @@ import type {
   SiteContent,
   SaveStatus,
   UsernameStatus,
+  MediaFile,
 } from "@/types/editor";
 
 interface Props {
@@ -29,6 +30,17 @@ interface Props {
     target?: string,
   ) => void;
   onSaveClick: () => void;
+  onOpenMediaLibrary: (onSelect: (url: string) => void) => void;
+  onMediaSelect: (url: string, target?: string) => void;
+  isMediaOpen: boolean;
+  mediaFiles: MediaFile[];
+  isMediaLoading: boolean;
+  isMediaUploading: boolean;
+  deletingMediaName: string | null;
+  onCloseMediaLibrary: () => void;
+  onUploadMediaFile: (file: File) => Promise<void>;
+  onSelectMediaFile: (url: string) => void;
+  onDeleteMediaFile: (name: string) => Promise<void>;
 }
 
 export function MobileEditor(props: Props) {

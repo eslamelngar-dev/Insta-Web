@@ -11,6 +11,7 @@ import { useImageUpload } from "@/hooks/editor/useImageUpload";
 import { useSaveToDatabase } from "@/hooks/editor/useSaveToDatabase";
 import { useAutoSave } from "@/hooks/editor/useAutoSave";
 import { useKeyboardShortcuts } from "@/hooks/editor/useKeyboardShortcuts";
+import { useMediaLibrary } from "@/hooks/editor/useMediaLibrary";
 import type { SiteContent, SaveStatus } from "@/types/editor";
 
 export default function EditorPage({
@@ -42,7 +43,7 @@ export default function EditorPage({
       content: { ...prev.content, ...updates },
     }));
 
-  const { uploadingId, handleImageUpload } = useImageUpload(
+  const { uploadingId, handleImageUpload, handleMediaSelect } = useImageUpload(
     data?.content ?? {},
     updateContent,
   );
@@ -54,8 +55,9 @@ export default function EditorPage({
     setData,
   );
 
-  useAutoSave(isReady, data, saveToDatabase, usernameStatus, setSaveStatus);
+  const mediaLibrary = useMediaLibrary();
 
+  useAutoSave(isReady, data, saveToDatabase, usernameStatus, setSaveStatus);
   useKeyboardShortcuts({ onUndo: undo, onRedo: redo, canUndo, canRedo });
 
   const handleSaveClick = () => {
@@ -104,7 +106,6 @@ export default function EditorPage({
       usernameStatus={usernameStatus}
       loading={loading}
       uploadingId={uploadingId}
-      showConfirmModal={showConfirmModal}
       canUndo={canUndo}
       canRedo={canRedo}
       onUndo={undo}
@@ -115,9 +116,8 @@ export default function EditorPage({
       updateContent={updateContent}
       handleImageUpload={handleImageUpload}
       onSaveClick={handleSaveClick}
-      onCloseModal={() => setShowConfirmModal(false)}
-      onSaveAsDraft={handleSaveAsDraft}
-      onPublish={handlePublish}
+      mediaLibrary={mediaLibrary}
+      onMediaSelect={handleMediaSelect}
     />
   );
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { createId } from "@/utils/id";
@@ -10,29 +10,8 @@ export function useImageUpload(
 ) {
   const [uploadingId, setUploadingId] = useState<string | null>(null);
 
-  const handleImageUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-    target?: string,
-  ) => {
-    try {
-      setUploadingId(target ?? "avatar");
-
-      const file = e.target.files?.[0];
-      if (!file) return;
-
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${createId()}.${fileExt}`;
-
-      const { error } = await supabase.storage
-        .from("avatars")
-        .upload(fileName, file);
-
-      if (error) throw error;
-
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("avatars").getPublicUrl(fileName);
-
+  const applyImage = useCallback(
+    (publicUrl: string, target?: string) => {
       if (target?.startsWith("portfolio-")) {
         const index = parseInt(target.split("-")[1]);
         const newPortfolio = [...(content.portfolio ?? [])];
@@ -57,14 +36,55 @@ export function useImageUpload(
         );
         updateContent({ blocks: newBlocks });
       }
+    },
+    [content, updateContent],
+  );
 
-      toast.success("Image Updated Successfully!");
-    } catch (err: unknown) {
-      if (err instanceof Error) toast.error(err.message);
-    } finally {
-      setUploadingId(null);
-    }
-  };
+  const handleImageUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>, target?: string) => {
+      try {
+        setUploadingId(target ?? "avatar");
 
-  return { uploadingId, handleImageUpload };
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const fileExt = file.name.split(".").pop();
+        const fileName = `${createId()}.${fileExt}`;
+        const filePath = `${user.id}/${fileName}`;
+
+        const { error } = await supabase.storage
+          .from("avatars")
+          .upload(filePath, file);
+
+        if (error) throw error;
+
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("avatars").getPublicUrl(filePath);
+
+        applyImage(publicUrl, target);
+        toast.success("Image Updated Successfully!");
+      } catch (err: unknown) {
+        if (err instanceof Error) toast.error(err.message);
+      } finally {
+        setUploadingId(null);
+      }
+    },
+    [applyImage],
+  );
+
+  const handleMediaSelect = useCallback(
+    (url: string, target?: string) => {
+      applyImage(url, target);
+      toast.success("Image applied from library!");
+    },
+    [applyImage],
+  );
+
+  return { uploadingId, handleImageUpload, handleMediaSelect };
 }

@@ -23,6 +23,8 @@ interface Props {
     target?: string,
   ) => void;
   uploadingId: string | null;
+  onOpenMediaLibrary: (onSelect: (url: string) => void) => void;
+  onMediaSelect: (url: string, target?: string) => void;
 }
 
 export function SortableBlockItem({
@@ -31,9 +33,12 @@ export function SortableBlockItem({
   deleteBlock,
   handleImageUpload,
   uploadingId,
+  onOpenMediaLibrary,
+  onMediaSelect,
 }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: block.id });
+
   const style = { transform: CSS.Transform.toString(transform), transition };
   const blockMeta = BENTO_BLOCK_TYPES.find((b) => b.type === block.type);
 
@@ -59,6 +64,7 @@ export function SortableBlockItem({
           >
             <GripVertical size={20} />
           </button>
+
           {blockMeta ? (
             <div
               className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-black uppercase ${blockMeta.bg} ${blockMeta.color}`}
@@ -72,6 +78,7 @@ export function SortableBlockItem({
             </span>
           )}
         </div>
+
         <button
           onClick={() => deleteBlock(block.id)}
           className="text-red-400 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all p-1"
@@ -83,6 +90,7 @@ export function SortableBlockItem({
       <div className="grid grid-cols-3 gap-2">
         {["1x1", "2x1", "2x2"].map((size) => {
           const [cs, rs] = size.split("x").map(Number);
+
           return (
             <button
               key={size}
@@ -108,36 +116,47 @@ export function SortableBlockItem({
             updateBentoBlock={updateBentoBlock}
             handleImageUpload={handleImageUpload}
             uploadingId={uploadingId}
+            onOpenMediaLibrary={onOpenMediaLibrary}
+            onMediaSelect={onMediaSelect}
           />
         )}
+
         {block.type === "image" && (
           <ImageBlockEditor
             block={block}
             handleImageUpload={handleImageUpload}
             uploadingId={uploadingId}
+            onOpenMediaLibrary={onOpenMediaLibrary}
+            onMediaSelect={onMediaSelect}
           />
         )}
+
         {block.type === "link" && (
           <LinkBlockEditor block={block} updateBentoBlock={updateBentoBlock} />
         )}
+
         {block.type === "social" && (
           <SocialBlockEditor
             block={block}
             updateBentoBlock={updateBentoBlock}
           />
         )}
+
         {block.type === "stats" && (
           <StatsBlockEditor block={block} updateBentoBlock={updateBentoBlock} />
         )}
+
         {block.type === "text" && (
           <TextBlockEditor block={block} updateBentoBlock={updateBentoBlock} />
         )}
+
         {block.type === "location" && (
           <LocationBlockEditor
             block={block}
             updateBentoBlock={updateBentoBlock}
           />
         )}
+
         {block.type === "music" && (
           <MusicBlockEditor block={block} updateBentoBlock={updateBentoBlock} />
         )}

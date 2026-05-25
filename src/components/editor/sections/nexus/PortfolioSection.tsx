@@ -1,8 +1,7 @@
 "use client";
 
-import { Plus, Trash2, Image as ImageIcon } from "lucide-react";
-import NextImage from "next/image";
-import { Loader2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
+import { UploadCard } from "../../shared/UploadCard";
 import type { SiteContent, PortfolioItem } from "@/types/editor";
 
 interface Props {
@@ -13,6 +12,8 @@ interface Props {
     target?: string,
   ) => void;
   uploadingId: string | null;
+  onOpenMediaLibrary: (onSelect: (url: string) => void) => void;
+  onMediaSelect: (url: string, target?: string) => void;
 }
 
 export function PortfolioSection({
@@ -20,6 +21,8 @@ export function PortfolioSection({
   updateContent,
   handleImageUpload,
   uploadingId,
+  onOpenMediaLibrary,
+  onMediaSelect,
 }: Props) {
   const updatePortfolio = (
     index: number,
@@ -40,6 +43,7 @@ export function PortfolioSection({
             Portfolio Showcase
           </label>
         </div>
+
         <button
           onClick={() =>
             updateContent({
@@ -60,6 +64,7 @@ export function PortfolioSection({
           <Plus size={18} />
         </button>
       </div>
+
       <div className="space-y-4 sm:space-y-6">
         {(content.portfolio ?? []).map((p, i) => (
           <div
@@ -78,42 +83,27 @@ export function PortfolioSection({
             >
               <Trash2 size={14} />
             </button>
-            <div className="relative aspect-video rounded-xl sm:rounded-3xl overflow-hidden bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-white/5">
-              {uploadingId === `portfolio-${i}` ? (
-                <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-slate-900/80">
-                  <Loader2 className="animate-spin text-indigo-500" size={24} />
-                </div>
-              ) : p.image ? (
-                <NextImage
-                  src={p.image}
-                  alt={p.title}
-                  fill
-                  className="object-cover"
-                />
-              ) : (
-                <ImageIcon
-                  className="absolute inset-0 m-auto text-slate-200"
-                  size={32}
-                />
-              )}
-              <label className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 flex items-center justify-center cursor-pointer transition-all">
-                <input
-                  type="file"
-                  className="hidden"
-                  onChange={(e) => handleImageUpload(e, `portfolio-${i}`)}
-                  accept="image/*"
-                />
-                <span className="text-white text-[10px] font-black uppercase">
-                  Replace Image
-                </span>
-              </label>
-            </div>
+
+            <UploadCard
+              imageUrl={p.image}
+              uploadingId={uploadingId}
+              targetId={`portfolio-${i}`}
+              label="Project Image"
+              aspectRatio="aspect-video"
+              rounded="rounded-xl sm:rounded-3xl"
+              onFileUpload={handleImageUpload}
+              onOpenLibrary={(target) =>
+                onOpenMediaLibrary((url) => onMediaSelect(url, target))
+              }
+            />
+
             <input
               value={p.title}
               onChange={(e) => updatePortfolio(i, "title", e.target.value)}
               className="w-full bg-transparent font-black text-sm uppercase outline-none focus:text-indigo-500"
               placeholder="Project Name"
             />
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <p className="text-[9px] font-bold text-slate-400 ml-1 uppercase">
@@ -128,6 +118,7 @@ export function PortfolioSection({
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-white/5 rounded-xl px-3 py-2.5 text-[10px] outline-none"
                 />
               </div>
+
               <div className="space-y-1">
                 <p className="text-[9px] font-bold text-slate-400 ml-1 uppercase">
                   Code URL
