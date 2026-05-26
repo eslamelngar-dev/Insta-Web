@@ -1,3 +1,5 @@
+import React from "react";
+
 export interface BlockData {
   title?: string;
   bio?: string;
@@ -57,6 +59,40 @@ export interface Hero {
   subtitle?: string;
 }
 
+export type FormFieldType =
+  | "text"
+  | "email"
+  | "phone"
+  | "textarea"
+  | "select"
+  | "date"
+  | "url"
+  | "number";
+
+export interface FormFieldOption {
+  label: string;
+  value: string;
+}
+
+export interface FormField {
+  id: string;
+  type: FormFieldType;
+  label: string;
+  placeholder: string;
+  required: boolean;
+  options?: FormFieldOption[];
+  width: "full" | "half";
+}
+
+export interface FormConfig {
+  enabled: boolean;
+  title: string;
+  description: string;
+  button_text: string;
+  success_message: string;
+  fields: FormField[];
+}
+
 export interface SiteContent {
   title?: string;
   bio?: string;
@@ -74,9 +110,12 @@ export interface SiteContent {
   email?: string;
   footer_text?: string;
   sections_visibility?: Record<string, boolean>;
+  form_config?: FormConfig;
 }
 
 export interface SiteData {
+  id?: string;
+  user_id?: string;
   username: string;
   title: string;
   bio: string;

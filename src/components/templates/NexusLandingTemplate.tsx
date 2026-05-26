@@ -17,7 +17,9 @@ import {
   Feature,
   PortfolioItem,
 } from "@/types";
-import ContactForm from "@/components/ContactForm";
+import type { FormConfig } from "@/types/editor";
+import DynamicContactForm from "@/components/DynamicContactForm";
+import { DEFAULT_FORM_CONFIG } from "@/constants/form-fields";
 
 const GithubIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -40,6 +42,9 @@ export default function NexusLandingTemplate({ site }: TemplateProps) {
   const isTemplateDark = content.theme_mode === "dark";
   const show = content.sections_visibility || {};
   const isPreview = !siteData.id || siteData.id === PREVIEW_ID;
+  const formConfig: FormConfig =
+    (content as { form_config?: FormConfig }).form_config ||
+    DEFAULT_FORM_CONFIG;
 
   const bgClass = isTemplateDark
     ? "bg-[#050505] text-white"
@@ -188,11 +193,7 @@ export default function NexusLandingTemplate({ site }: TemplateProps) {
                           href={p.code_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105 shadow-lg ${
-                            isTemplateDark
-                              ? "bg-white/10 text-white hover:bg-white/20"
-                              : "bg-slate-900 text-white hover:bg-slate-700"
-                          }`}
+                          className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105 shadow-lg ${isTemplateDark ? "bg-white/10 text-white hover:bg-white/20" : "bg-slate-900 text-white hover:bg-slate-700"}`}
                         >
                           <GithubIcon /> Code
                         </a>
@@ -227,7 +228,7 @@ export default function NexusLandingTemplate({ site }: TemplateProps) {
         </section>
       )}
 
-      {show.contact !== false && (
+      {show.contact !== false && formConfig.enabled && (
         <footer
           id="nexus-contact"
           className="px-6 py-24 border-t border-white/5"
@@ -235,27 +236,31 @@ export default function NexusLandingTemplate({ site }: TemplateProps) {
           <div className="max-w-2xl mx-auto">
             <div className="text-center mb-12">
               <h2 className="text-3xl @[768px]:text-6xl font-black uppercase tracking-tighter mb-4">
-                Ready to start?
+                {formConfig.title || "Ready to start?"}
               </h2>
               <p
-                className={
-                  isTemplateDark
-                    ? "text-sm text-white/40"
-                    : "text-sm text-slate-400"
-                }
+                style={{
+                  color: isTemplateDark ? "rgba(255,255,255,0.4)" : "#94a3b8",
+                  fontSize: 14,
+                }}
               >
-                Fill in the form and we&apos;ll get back to you shortly.
+                {formConfig.description ||
+                  "Fill in the form and we'll get back to you shortly."}
               </p>
             </div>
 
             {isPreview ? (
-              <PreviewForm color={primaryColor} dark={isTemplateDark} />
+              <PreviewForm
+                color={primaryColor}
+                dark={isTemplateDark}
+                config={formConfig}
+              />
             ) : (
-              <ContactForm
+              <DynamicContactForm
                 siteId={siteData.id!}
+                config={formConfig}
                 accentColor={primaryColor}
                 darkMode={isTemplateDark}
-                source="nexus_contact"
               />
             )}
 
@@ -271,59 +276,61 @@ export default function NexusLandingTemplate({ site }: TemplateProps) {
   );
 }
 
-function PreviewForm({ color, dark }: { color: string; dark: boolean }) {
+function PreviewForm({
+  color,
+  dark,
+  config,
+}: {
+  color: string;
+  dark: boolean;
+  config: FormConfig;
+}) {
+  const fieldBg = dark ? "rgba(255,255,255,0.04)" : "#f8fafc";
+  const fieldBorder = dark ? "rgba(255,255,255,0.08)" : "#e2e8f0";
+  const fieldColor = dark ? "rgba(255,255,255,0.25)" : "#94a3b8";
+
   return (
     <div className="space-y-4 select-none">
       <div
-        className={`flex items-center justify-center gap-2.5 py-3 px-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border ${
-          dark
-            ? "bg-indigo-500/10 border-indigo-500/20 text-indigo-300"
-            : "bg-indigo-50 border-indigo-100 text-indigo-600"
-        }`}
+        className="flex items-center justify-center gap-2.5 py-3 px-4 rounded-2xl text-[10px] font-black uppercase tracking-widest"
+        style={{
+          backgroundColor: "rgba(99,102,241,0.08)",
+          border: "1px solid rgba(99,102,241,0.2)",
+          color: "#6366f1",
+        }}
       >
-        <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+        <span
+          className="w-2 h-2 rounded-full animate-pulse"
+          style={{ backgroundColor: "#6366f1" }}
+        />
         Preview — Form works on published site
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div
-          className={`px-4 py-3.5 rounded-xl text-sm font-medium border ${
-            dark
-              ? "bg-white/6 border-white/12 text-white/30"
-              : "bg-slate-50 border-slate-200 text-slate-300"
-          }`}
-        >
-          Your Name
-        </div>
-        <div
-          className={`px-4 py-3.5 rounded-xl text-sm font-medium border ${
-            dark
-              ? "bg-white/6 border-white/12 text-white/30"
-              : "bg-slate-50 border-slate-200 text-slate-300"
-          }`}
-        >
-          Email Address
-        </div>
-      </div>
-
-      <div
-        className={`px-4 py-3.5 rounded-xl text-sm font-medium border ${
-          dark
-            ? "bg-white/6 border-white/12 text-white/30"
-            : "bg-slate-50 border-slate-200 text-slate-300"
-        }`}
-      >
-        Phone (optional)
-      </div>
-
-      <div
-        className={`px-4 py-3.5 rounded-xl text-sm font-medium border min-h-30 ${
-          dark
-            ? "bg-white/6 border-white/12 text-white/30"
-            : "bg-slate-50 border-slate-200 text-slate-300"
-        }`}
-      >
-        Your Message
+        {config.fields.map((field) => (
+          <div
+            key={field.id}
+            className={field.width === "full" ? "sm:col-span-2" : ""}
+          >
+            <div
+              style={{
+                padding: "14px 16px",
+                borderRadius: 12,
+                fontSize: 14,
+                fontWeight: 500,
+                backgroundColor: fieldBg,
+                border: `1px solid ${fieldBorder}`,
+                color: fieldColor,
+                minHeight: field.type === "textarea" ? 120 : undefined,
+              }}
+            >
+              {field.placeholder}
+              {field.required && (
+                <span style={{ color: "#ef4444", marginLeft: 4 }}>*</span>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
 
       <div
@@ -331,7 +338,7 @@ function PreviewForm({ color, dark }: { color: string; dark: boolean }) {
         style={{ backgroundColor: color, opacity: 0.7 }}
       >
         <Send size={15} />
-        Send Message
+        {config.button_text || "Send Message"}
       </div>
     </div>
   );

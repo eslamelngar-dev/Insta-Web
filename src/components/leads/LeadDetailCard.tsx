@@ -1,6 +1,14 @@
 "use client";
 
-import { Mail, Phone, MessageSquare, Globe, Calendar, Tag } from "lucide-react";
+import {
+  Mail,
+  Phone,
+  MessageSquare,
+  Globe,
+  Calendar,
+  Tag,
+  ClipboardList,
+} from "lucide-react";
 import { LeadStatusBadge } from "./LeadStatusBadge";
 import type { Lead, LeadStatus } from "@/types/leads";
 
@@ -50,6 +58,9 @@ export function LeadDetailCard({ lead, onStatusChange, isUpdating }: Props) {
       }),
     },
   ];
+
+  const metadata = lead.metadata as Record<string, string> | null;
+  const hasMetadata = metadata && Object.keys(metadata).length > 0;
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-sm">
@@ -103,6 +114,44 @@ export function LeadDetailCard({ lead, onStatusChange, isUpdating }: Props) {
             </div>
           );
         })}
+
+        {hasMetadata && (
+          <div className="flex gap-3">
+            <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center shrink-0 mt-0.5">
+              <ClipboardList
+                size={15}
+                className="text-slate-500 dark:text-slate-400"
+              />
+            </div>
+            <div className="flex-1">
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2">
+                Custom Fields
+              </p>
+              <div className="space-y-2">
+                {Object.entries(metadata!).map(([key, value]) => (
+                  <div
+                    key={key}
+                    className="flex items-center justify-between px-3 py-2.5 rounded-xl"
+                    style={{
+                      backgroundColor: "rgba(99,102,241,0.05)",
+                      border: "1px solid rgba(99,102,241,0.12)",
+                    }}
+                  >
+                    <span
+                      className="text-[11px] font-bold"
+                      style={{ color: "#6366f1" }}
+                    >
+                      {key}
+                    </span>
+                    <span className="text-[11px] text-slate-700 dark:text-slate-300 font-medium text-right max-w-[60%] wrap-break-word">
+                      {value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-3">
           <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center shrink-0 mt-0.5">

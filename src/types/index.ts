@@ -114,3 +114,36 @@ export interface TemplateConfig {
   features: string[];
   defaultContent: SiteContent;
 }
+export type FormFieldType =
+  | "text"
+  | "email"
+  | "phone"
+  | "textarea"
+  | "select"
+  | "date"
+  | "url"
+  | "number";
+
+export interface FormFieldOption {
+  label: string;
+  value: string;
+}
+
+export interface FormField {
+  id: string;
+  type: FormFieldType;
+  label: string;
+  placeholder: string;
+  required: boolean;
+  options?: FormFieldOption[];
+  width: "full" | "half";
+}
+
+export interface FormConfig {
+  enabled: boolean;
+  title: string;
+  description: string;
+  button_text: string;
+  success_message: string;
+  fields: FormField[];
+}

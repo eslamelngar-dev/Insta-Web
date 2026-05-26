@@ -99,7 +99,7 @@ export default function Sidebar() {
       </nav>
 
       <div className="mt-auto space-y-4">
-        <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 p-5 rounded-[1.5rem] shadow-sm relative overflow-hidden group">
+        <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 p-5 rounded-3xl shadow-sm relative overflow-hidden group">
           <div className="absolute -top-4 -right-4 w-12 h-12 bg-indigo-600/10 rounded-full group-hover:scale-150 transition-transform duration-700" />
           <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-2">
             Current Tier
@@ -144,13 +144,13 @@ export default function Sidebar() {
 
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-60 bg-black/50 backdrop-blur-sm lg:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
       <aside
-        className={`fixed top-0 left-0 h-screen w-72 border-r border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-slate-950 flex flex-col p-6 z-[70] transition-transform duration-300 ease-in-out lg:sticky lg:top-0 lg:translate-x-0 ${
+        className={`fixed top-0 left-0 h-screen w-72 border-r border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-slate-950 flex flex-col p-6 z-70 transition-transform duration-300 ease-in-out lg:sticky lg:top-0 lg:translate-x-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >

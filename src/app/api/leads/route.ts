@@ -4,21 +4,30 @@ import { createClient } from "@/lib/supabase-server";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { site_id, name, email, phone, message, source } = body;
+    const { site_id, name, email, phone, message, source, metadata } = body;
 
-    if (!site_id || !email) {
+    if (!site_id) {
       return NextResponse.json(
-        { error: "site_id and email are required" },
+        { error: "site_id is required" },
         { status: 400 },
       );
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!email && !name && !metadata) {
       return NextResponse.json(
-        { error: "Invalid email format" },
+        { error: "At least one field is required" },
         { status: 400 },
       );
+    }
+
+    if (email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return NextResponse.json(
+          { error: "Invalid email format" },
+          { status: 400 },
+        );
+      }
     }
 
     const supabase = await createClient();
@@ -39,10 +48,11 @@ export async function POST(req: NextRequest) {
         site_id,
         user_id: site.user_id,
         name: name?.trim() || null,
-        email: email.trim().toLowerCase(),
+        email: email?.trim()?.toLowerCase() || "no-email@form.submission",
         phone: phone?.trim() || null,
         message: message?.trim() || null,
-        source: source || "contact_form",
+        source: source || "custom_form",
+        metadata: metadata || {},
       })
       .select()
       .single();
