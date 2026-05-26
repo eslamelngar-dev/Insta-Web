@@ -76,6 +76,7 @@ export interface FormFieldOption {
 
 export interface FormField {
   id: string;
+  name: string;
   type: FormFieldType;
   label: string;
   placeholder: string;

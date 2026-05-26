@@ -1,4 +1,4 @@
-import type { FormField, FormFieldType } from "@/types/editor";
+import type { FormFieldType } from "@/types/editor";
 
 export interface FieldPreset {
   type: FormFieldType;
@@ -141,6 +141,7 @@ export const DEFAULT_FORM_CONFIG = {
   fields: [
     {
       id: "field_name",
+      name: "full_name",
       type: "text" as const,
       label: "Full Name",
       placeholder: "John Doe",
@@ -149,6 +150,7 @@ export const DEFAULT_FORM_CONFIG = {
     },
     {
       id: "field_email",
+      name: "email",
       type: "email" as const,
       label: "Email",
       placeholder: "john@example.com",
@@ -157,6 +159,7 @@ export const DEFAULT_FORM_CONFIG = {
     },
     {
       id: "field_message",
+      name: "message",
       type: "textarea" as const,
       label: "Message",
       placeholder: "Your message...",

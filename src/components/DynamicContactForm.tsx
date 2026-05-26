@@ -23,9 +23,8 @@ export default function DynamicContactForm({
   >("idle");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const setValue = (fieldId: string, value: string) => {
-    setValues((prev) => ({ ...prev, [fieldId]: value }));
-  };
+  const setValue = (id: string, val: string) =>
+    setValues((p) => ({ ...p, [id]: val }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,9 +41,7 @@ export default function DynamicContactForm({
 
       const metadata: Record<string, string> = {};
       config.fields.forEach((field) => {
-        if (values[field.id]) {
-          metadata[field.label] = values[field.id];
-        }
+        if (values[field.id]) metadata[field.label] = values[field.id];
       });
 
       const res = await fetch("/api/leads", {
@@ -75,21 +72,24 @@ export default function DynamicContactForm({
   if (status === "success") {
     return (
       <div
-        className="text-center py-12 px-6 rounded-2xl border"
+        className="text-center py-12 px-6 rounded-2xl"
         style={{
           backgroundColor: darkMode ? "rgba(255,255,255,0.03)" : "#f8fafc",
-          borderColor: darkMode ? "rgba(255,255,255,0.08)" : "#e2e8f0",
+          border: `1px solid ${darkMode ? "rgba(255,255,255,0.08)" : "#e2e8f0"}`,
         }}
       >
         <div
           className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-          style={{ backgroundColor: `${accentColor}15`, color: accentColor }}
+          style={{
+            backgroundColor: `${accentColor}15`,
+            color: accentColor,
+          }}
         >
           <CheckCircle size={32} />
         </div>
         <h3
           className="text-xl font-bold mb-2"
-          style={{ color: darkMode ? "#ffffff" : "#0f172a" }}
+          style={{ color: darkMode ? "#fff" : "#0f172a" }}
         >
           {config.success_message || "Message Sent!"}
         </h3>
@@ -104,15 +104,24 @@ export default function DynamicContactForm({
     );
   }
 
-  const inputStyle = {
-    backgroundColor: darkMode ? "rgba(255,255,255,0.05)" : "#ffffff",
-    borderColor: darkMode ? "rgba(255,255,255,0.1)" : "#e2e8f0",
-    color: darkMode ? "#ffffff" : "#0f172a",
-  };
+  const inputBg = darkMode ? "rgba(255,255,255,0.05)" : "#ffffff";
+  const inputBorder = darkMode ? "rgba(255,255,255,0.1)" : "#e2e8f0";
+  const inputColor = darkMode ? "#ffffff" : "#0f172a";
+  const phColor = darkMode ? "rgba(255,255,255,0.3)" : "#94a3b8";
+  const labelColor = darkMode ? "rgba(255,255,255,0.4)" : "#64748b";
 
-  const placeholderClass = darkMode
-    ? "placeholder:text-white/30"
-    : "placeholder:text-slate-400";
+  const baseStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "12px 16px",
+    borderRadius: 12,
+    fontSize: 14,
+    fontWeight: 500,
+    outline: "none",
+    transition: "border-color 200ms",
+    backgroundColor: inputBg,
+    border: `1px solid ${inputBorder}`,
+    color: inputColor,
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -132,13 +141,26 @@ export default function DynamicContactForm({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {config.fields.map((field) => {
-          const isFullWidth = field.width === "full";
-          const wrapperClass = isFullWidth ? "sm:col-span-2" : "";
-
-          const baseInputClass = `w-full px-4 py-3 rounded-xl text-sm font-medium outline-none transition-all border focus:ring-2 ${placeholderClass}`;
+          const full = field.width === "full";
 
           return (
-            <div key={field.id} className={wrapperClass}>
+            <div key={field.id} className={full ? "sm:col-span-2" : ""}>
+              <label
+                className="block mb-2"
+                style={{
+                  fontSize: 10,
+                  fontWeight: 900,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.1em",
+                  color: labelColor,
+                }}
+              >
+                {field.label}
+                {field.required && (
+                  <span style={{ color: "#ef4444", marginLeft: 4 }}>*</span>
+                )}
+              </label>
+
               {field.type === "textarea" ? (
                 <textarea
                   placeholder={field.placeholder}
@@ -146,34 +168,22 @@ export default function DynamicContactForm({
                   onChange={(e) => setValue(field.id, e.target.value)}
                   required={field.required}
                   rows={4}
-                  className={`${baseInputClass} resize-none`}
-                  style={{
-                    ...inputStyle,
-                    // @ts-expect-error css variable
-                    "--tw-ring-color": `${accentColor}40`,
-                  }}
+                  style={{ ...baseStyle, resize: "none" }}
                 />
               ) : field.type === "select" ? (
                 <select
                   value={values[field.id] || ""}
                   onChange={(e) => setValue(field.id, e.target.value)}
                   required={field.required}
-                  className={baseInputClass}
                   style={{
-                    ...inputStyle,
-                    // @ts-expect-error css variable
-                    "--tw-ring-color": `${accentColor}40`,
-                    color: !values[field.id]
-                      ? darkMode
-                        ? "rgba(255,255,255,0.3)"
-                        : "#94a3b8"
-                      : inputStyle.color,
+                    ...baseStyle,
+                    color: values[field.id] ? inputColor : phColor,
                   }}
                 >
                   <option value="">{field.placeholder}</option>
-                  {(field.options || []).map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
+                  {(field.options || []).map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
                     </option>
                   ))}
                 </select>
@@ -190,12 +200,7 @@ export default function DynamicContactForm({
                   value={values[field.id] || ""}
                   onChange={(e) => setValue(field.id, e.target.value)}
                   required={field.required}
-                  className={baseInputClass}
-                  style={{
-                    ...inputStyle,
-                    // @ts-expect-error css variable
-                    "--tw-ring-color": `${accentColor}40`,
-                  }}
+                  style={baseStyle}
                 />
               )}
             </div>

@@ -1,10 +1,10 @@
-// src/lib/templates-registry.ts
 import ClassicTemplate from "@/components/templates/ClassicTemplate";
 import BentoTemplate from "@/components/templates/BentoTemplate";
 import NexusLandingTemplate from "@/components/templates/NexusLandingTemplate";
 import GlassTemplate from "@/components/templates/GlassTemplate";
 import TerminalTemplate from "@/components/templates/TerminalTemplate";
 import NotionTemplate from "@/components/templates/NotionTemplate";
+import FormCraftTemplate from "@/components/templates/FormCraftTemplate";
 import { TemplateConfig } from "@/types";
 
 export const TEMPLATES_REGISTRY: Record<string, TemplateConfig> = {
@@ -287,6 +287,86 @@ export const TEMPLATES_REGISTRY: Record<string, TemplateConfig> = {
         { id: "l1", label: "Read My Resume", url: "#", icon: "layout" },
         { id: "l2", label: "Book a Consultation", url: "#", icon: "mail" },
       ],
+    },
+  },
+
+  formcraft: {
+    id: "formcraft",
+    name: "FormCraft",
+    category: "Form",
+    description:
+      "A dedicated form page. Build custom contact forms with drag & drop fields.",
+    component: FormCraftTemplate,
+    features: ["tone", "avatar", "baseInfo"],
+    defaultContent: {
+      color: "#6366f1",
+      theme_mode: "dark",
+      title: "FormCraft",
+      bio: "Open for new projects",
+      avatar_url: "",
+      email: "hello@formcraft.co",
+      footer_text: "Powered by InstaWeb",
+      form_config: {
+        enabled: true,
+        title: "Get in Touch",
+        description:
+          "Fill in the form below and we'll get back to you within 24 hours.",
+        button_text: "Send Message",
+        success_message: "Thank you! We'll be in touch soon.",
+        fields: [
+          {
+            id: "field_name",
+            name: "full_name",
+            type: "text",
+            label: "Full Name",
+            placeholder: "John Doe",
+            required: true,
+            width: "half",
+          },
+          {
+            id: "field_email",
+            name: "email",
+            type: "email",
+            label: "Email",
+            placeholder: "john@example.com",
+            required: true,
+            width: "half",
+          },
+          {
+            id: "field_company",
+            name: "company",
+            type: "text",
+            label: "Company",
+            placeholder: "Company name",
+            required: false,
+            width: "half",
+          },
+          {
+            id: "field_budget",
+            name: "budget",
+            type: "select",
+            label: "Budget",
+            placeholder: "Select budget range",
+            required: false,
+            width: "half",
+            options: [
+              { label: "Under $1,000", value: "under_1k" },
+              { label: "$1,000 - $5,000", value: "1k_5k" },
+              { label: "$5,000 - $10,000", value: "5k_10k" },
+              { label: "$10,000+", value: "10k_plus" },
+            ],
+          },
+          {
+            id: "field_message",
+            name: "message",
+            type: "textarea",
+            label: "Message",
+            placeholder: "Tell us about your project...",
+            required: true,
+            width: "full",
+          },
+        ],
+      },
     },
   },
 };

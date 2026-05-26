@@ -12,6 +12,7 @@ import { IdentitySection } from "../sections/IdentitySection";
 import { BentoSection } from "../sections/BentoSection";
 import { NexusSection } from "../sections/nexus";
 import { StandardSection } from "../sections/StandardSection";
+import { FormCraftSection } from "../sections/FormCraftSection";
 import { EditorHeader } from "./EditorHeader";
 import { EditorFooter } from "./EditorFooter";
 import { TEMPLATES_REGISTRY } from "@/lib/templates-registry";
@@ -190,6 +191,52 @@ export function EditorSidebar({
     );
   }
 
+  const renderTemplateSection = () => {
+    switch (data.template_id) {
+      case "bento":
+        return (
+          <BentoSection
+            content={data.content}
+            updateContent={updateContent}
+            handleImageUpload={handleImageUpload}
+            uploadingId={uploadingId}
+            onOpenMediaLibrary={onOpenMediaLibrary}
+            onMediaSelect={onMediaSelect}
+          />
+        );
+      case "nexus":
+        return (
+          <NexusSection
+            content={data.content}
+            updateContent={updateContent}
+            handleImageUpload={handleImageUpload}
+            uploadingId={uploadingId}
+            onOpenMediaLibrary={onOpenMediaLibrary}
+            onMediaSelect={onMediaSelect}
+          />
+        );
+      case "formcraft":
+        return (
+          <FormCraftSection
+            content={data.content}
+            updateContent={updateContent}
+          />
+        );
+      default:
+        return (
+          <StandardSection
+            content={data.content}
+            updateContent={updateContent}
+            handleImageUpload={handleImageUpload}
+            uploadingId={uploadingId}
+            activeFeatures={activeFeatures}
+            onOpenMediaLibrary={onOpenMediaLibrary}
+            onMediaSelect={onMediaSelect}
+          />
+        );
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       <EditorHeader
@@ -212,35 +259,7 @@ export function EditorSidebar({
 
         <div className="w-full h-px bg-slate-100 dark:bg-white/5" />
 
-        {data.template_id === "bento" ? (
-          <BentoSection
-            content={data.content}
-            updateContent={updateContent}
-            handleImageUpload={handleImageUpload}
-            uploadingId={uploadingId}
-            onOpenMediaLibrary={onOpenMediaLibrary}
-            onMediaSelect={onMediaSelect}
-          />
-        ) : data.template_id === "nexus" ? (
-          <NexusSection
-            content={data.content}
-            updateContent={updateContent}
-            handleImageUpload={handleImageUpload}
-            uploadingId={uploadingId}
-            onOpenMediaLibrary={onOpenMediaLibrary}
-            onMediaSelect={onMediaSelect}
-          />
-        ) : (
-          <StandardSection
-            content={data.content}
-            updateContent={updateContent}
-            handleImageUpload={handleImageUpload}
-            uploadingId={uploadingId}
-            activeFeatures={activeFeatures}
-            onOpenMediaLibrary={onOpenMediaLibrary}
-            onMediaSelect={onMediaSelect}
-          />
-        )}
+        {renderTemplateSection()}
       </div>
 
       <EditorFooter
