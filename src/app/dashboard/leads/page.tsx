@@ -21,24 +21,39 @@ export default function LeadsPage() {
     resetFilters,
     hasActiveFilters,
   } = useLeadsFilters();
-  const { leads, stats, isLoading, page, totalPages, total, setPage, refresh } =
-    useLeads(filters);
+
+  const {
+    leads,
+    stats,
+    isLoading,
+    page,
+    totalPages,
+    total,
+    setPage,
+    updateLeadLocally,
+    removeLeadLocally,
+  } = useLeads(filters);
+
   const { updateStatus, deleteLead, isUpdating, isDeleting } = useLeadActions();
 
   const handleStatusChange = useCallback(
     async (id: string, status: LeadStatus) => {
-      await updateStatus(id, status);
-      refresh();
+      const updated = await updateStatus(id, status);
+      if (updated) {
+        updateLeadLocally(id, { status: updated.status });
+      }
     },
-    [updateStatus, refresh],
+    [updateStatus, updateLeadLocally],
   );
 
   const handleDelete = useCallback(
     async (id: string) => {
       const ok = await deleteLead(id);
-      if (ok) refresh();
+      if (ok) {
+        removeLeadLocally(id);
+      }
     },
-    [deleteLead, refresh],
+    [deleteLead, removeLeadLocally],
   );
 
   return (
@@ -52,7 +67,7 @@ export default function LeadsPage() {
             <h1 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
               Leads
             </h1>
-            <p className="text-xs text-slate-400 font-medium mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
               Manage contacts from your site
             </p>
           </div>

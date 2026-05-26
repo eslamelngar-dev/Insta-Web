@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import type { Lead, LeadsFilters, LeadsStats } from "@/types/leads";
+import type { Lead, LeadsFilters, LeadsStats, LeadStatus } from "@/types/leads";
 
 interface UseLeadsReturn {
   leads: Lead[];
@@ -11,6 +11,8 @@ interface UseLeadsReturn {
   total: number;
   setPage: (page: number) => void;
   refresh: () => void;
+  updateLeadLocally: (id: string, updates: Partial<Lead>) => void;
+  removeLeadLocally: (id: string) => void;
 }
 
 const DEFAULT_STATS: LeadsStats = {
@@ -23,8 +25,31 @@ const DEFAULT_STATS: LeadsStats = {
   conversionRate: 0,
 };
 
+function calcStats(allLeads: Lead[]): LeadsStats {
+  const total = allLeads.length;
+  const counts = {
+    new: 0,
+    contacted: 0,
+    qualified: 0,
+    converted: 0,
+    archived: 0,
+  };
+  allLeads.forEach((l) => {
+    if (counts[l.status as keyof typeof counts] !== undefined) {
+      counts[l.status as keyof typeof counts]++;
+    }
+  });
+  return {
+    total,
+    ...counts,
+    conversionRate:
+      total > 0 ? Math.round((counts.converted / total) * 100) : 0,
+  };
+}
+
 export function useLeads(filters: LeadsFilters): UseLeadsReturn {
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [allLeads, setAllLeads] = useState<Lead[]>([]);
   const [stats, setStats] = useState<LeadsStats>(DEFAULT_STATS);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +60,32 @@ export function useLeads(filters: LeadsFilters): UseLeadsReturn {
 
   const refresh = useCallback(() => {
     setRefreshKey((k) => k + 1);
+  }, []);
+
+  const updateLeadLocally = useCallback(
+    (id: string, updates: Partial<Lead>) => {
+      setLeads((prev) =>
+        prev.map((l) => (l.id === id ? { ...l, ...updates } : l)),
+      );
+      setAllLeads((prev) => {
+        const updated = prev.map((l) =>
+          l.id === id ? { ...l, ...updates } : l,
+        );
+        setStats(calcStats(updated));
+        return updated;
+      });
+    },
+    [],
+  );
+
+  const removeLeadLocally = useCallback((id: string) => {
+    setLeads((prev) => prev.filter((l) => l.id !== id));
+    setAllLeads((prev) => {
+      const updated = prev.filter((l) => l.id !== id);
+      setStats(calcStats(updated));
+      setTotal(updated.length);
+      return updated;
+    });
   }, []);
 
   useEffect(() => {
@@ -48,6 +99,8 @@ export function useLeads(filters: LeadsFilters): UseLeadsReturn {
   ]);
 
   useEffect(() => {
+    let cancelled = false;
+
     const fetchLeads = async () => {
       setIsLoading(true);
       setError(null);
@@ -66,40 +119,33 @@ export function useLeads(filters: LeadsFilters): UseLeadsReturn {
         if (!res.ok) throw new Error("Failed to fetch leads");
 
         const json = await res.json();
-        const leadsData: Lead[] = json.data || [];
+        if (cancelled) return;
 
-        setLeads(leadsData);
+        setLeads(json.data || []);
         setTotal(json.pagination?.total || 0);
         setTotalPages(json.pagination?.pages || 1);
 
-        const statsRes = await fetch("/api/leads?limit=1000");
-        if (statsRes.ok) {
-          const statsJson = await statsRes.json();
-          const allLeads: Lead[] = statsJson.data || [];
-          const converted = allLeads.filter(
-            (l) => l.status === "converted",
-          ).length;
-          setStats({
-            total: statsJson.pagination?.total || 0,
-            new: allLeads.filter((l) => l.status === "new").length,
-            contacted: allLeads.filter((l) => l.status === "contacted").length,
-            qualified: allLeads.filter((l) => l.status === "qualified").length,
-            converted,
-            archived: allLeads.filter((l) => l.status === "archived").length,
-            conversionRate:
-              allLeads.length > 0
-                ? Math.round((converted / allLeads.length) * 100)
-                : 0,
-          });
+        const allRes = await fetch("/api/leads?limit=1000");
+        if (allRes.ok) {
+          const allJson = await allRes.json();
+          if (cancelled) return;
+          const all = allJson.data || [];
+          setAllLeads(all);
+          setStats(calcStats(all));
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Unknown error");
+        }
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
 
     fetchLeads();
+    return () => {
+      cancelled = true;
+    };
   }, [filters, page, refreshKey]);
 
   return {
@@ -112,5 +158,7 @@ export function useLeads(filters: LeadsFilters): UseLeadsReturn {
     total,
     setPage,
     refresh,
+    updateLeadLocally,
+    removeLeadLocally,
   };
 }

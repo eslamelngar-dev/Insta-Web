@@ -289,7 +289,7 @@ function PreviewForm({ color, dark }: { color: string; dark: boolean }) {
         <div
           className={`px-4 py-3.5 rounded-xl text-sm font-medium border ${
             dark
-              ? "bg-white/[0.06] border-white/[0.12] text-white/30"
+              ? "bg-white/6 border-white/12 text-white/30"
               : "bg-slate-50 border-slate-200 text-slate-300"
           }`}
         >
@@ -298,7 +298,7 @@ function PreviewForm({ color, dark }: { color: string; dark: boolean }) {
         <div
           className={`px-4 py-3.5 rounded-xl text-sm font-medium border ${
             dark
-              ? "bg-white/[0.06] border-white/[0.12] text-white/30"
+              ? "bg-white/6 border-white/12 text-white/30"
               : "bg-slate-50 border-slate-200 text-slate-300"
           }`}
         >
@@ -309,7 +309,7 @@ function PreviewForm({ color, dark }: { color: string; dark: boolean }) {
       <div
         className={`px-4 py-3.5 rounded-xl text-sm font-medium border ${
           dark
-            ? "bg-white/[0.06] border-white/[0.12] text-white/30"
+            ? "bg-white/6 border-white/12 text-white/30"
             : "bg-slate-50 border-slate-200 text-slate-300"
         }`}
       >
@@ -317,9 +317,9 @@ function PreviewForm({ color, dark }: { color: string; dark: boolean }) {
       </div>
 
       <div
-        className={`px-4 py-3.5 rounded-xl text-sm font-medium border min-h-[120px] ${
+        className={`px-4 py-3.5 rounded-xl text-sm font-medium border min-h-30 ${
           dark
-            ? "bg-white/[0.06] border-white/[0.12] text-white/30"
+            ? "bg-white/6 border-white/12 text-white/30"
             : "bg-slate-50 border-slate-200 text-slate-300"
         }`}
       >

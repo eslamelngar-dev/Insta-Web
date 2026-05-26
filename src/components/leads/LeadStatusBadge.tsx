@@ -1,28 +1,45 @@
 import type { LeadStatus } from "@/types/leads";
 
-const STATUS_CONFIG: Record<LeadStatus, { label: string; className: string }> =
-  {
-    new: {
-      label: "New",
-      className: "bg-blue-500/10 text-blue-500 border-blue-500/20",
-    },
-    contacted: {
-      label: "Contacted",
-      className: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
-    },
-    qualified: {
-      label: "Qualified",
-      className: "bg-purple-500/10 text-purple-500 border-purple-500/20",
-    },
-    converted: {
-      label: "Converted",
-      className: "bg-green-500/10 text-green-500 border-green-500/20",
-    },
-    archived: {
-      label: "Archived",
-      className: "bg-slate-500/10 text-slate-500 border-slate-500/20",
-    },
-  };
+const STATUS_CONFIG: Record<
+  LeadStatus,
+  { label: string; color: string; bg: string; border: string; dot: string }
+> = {
+  new: {
+    label: "New",
+    color: "#3b82f6",
+    bg: "rgba(59,130,246,0.1)",
+    border: "rgba(59,130,246,0.25)",
+    dot: "#3b82f6",
+  },
+  contacted: {
+    label: "Contacted",
+    color: "#eab308",
+    bg: "rgba(234,179,8,0.1)",
+    border: "rgba(234,179,8,0.25)",
+    dot: "#eab308",
+  },
+  qualified: {
+    label: "Qualified",
+    color: "#8b5cf6",
+    bg: "rgba(139,92,246,0.1)",
+    border: "rgba(139,92,246,0.25)",
+    dot: "#8b5cf6",
+  },
+  converted: {
+    label: "Converted",
+    color: "#22c55e",
+    bg: "rgba(34,197,94,0.1)",
+    border: "rgba(34,197,94,0.25)",
+    dot: "#22c55e",
+  },
+  archived: {
+    label: "Archived",
+    color: "#94a3b8",
+    bg: "rgba(148,163,184,0.1)",
+    border: "rgba(148,163,184,0.25)",
+    dot: "#94a3b8",
+  },
+};
 
 interface Props {
   status: LeadStatus;
@@ -31,24 +48,23 @@ interface Props {
 
 export function LeadStatusBadge({ status, size = "md" }: Props) {
   const config = STATUS_CONFIG[status];
+
   return (
     <span
-      className={`inline-flex items-center font-black uppercase tracking-widest border rounded-full ${config.className} ${
+      className={`inline-flex items-center gap-2 font-black uppercase tracking-widest rounded-full ${
         size === "sm" ? "text-[9px] px-2.5 py-1" : "text-[10px] px-3 py-1.5"
       }`}
+      style={{
+        color: config.color,
+        backgroundColor: config.bg,
+        border: `1px solid ${config.border}`,
+      }}
     >
       <span
-        className={`rounded-full mr-1.5 ${
-          status === "new"
-            ? "bg-blue-500"
-            : status === "contacted"
-              ? "bg-yellow-500"
-              : status === "qualified"
-                ? "bg-purple-500"
-                : status === "converted"
-                  ? "bg-green-500"
-                  : "bg-slate-500"
-        } ${size === "sm" ? "w-1 h-1" : "w-1.5 h-1.5"}`}
+        className={`rounded-full shrink-0 ${
+          size === "sm" ? "w-1.5 h-1.5" : "w-2 h-2"
+        }`}
+        style={{ backgroundColor: config.dot }}
       />
       {config.label}
     </span>
