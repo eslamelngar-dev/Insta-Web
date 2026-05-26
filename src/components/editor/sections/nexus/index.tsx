@@ -29,7 +29,7 @@ export function NexusSection({
   onMediaSelect,
 }: Props) {
   return (
-    <div className="space-y-8 sm:space-y-12 pb-32">
+    <div className="space-y-8 sm:space-y-12">
       <VisibilitySection content={content} updateContent={updateContent} />
       <HeroSection content={content} updateContent={updateContent} />
       <FeaturesSection content={content} updateContent={updateContent} />

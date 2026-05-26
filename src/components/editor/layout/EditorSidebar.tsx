@@ -191,7 +191,7 @@ export function EditorSidebar({
   }
 
   return (
-    <>
+    <div className="flex flex-col h-full">
       <EditorHeader
         saveStatus={saveStatus}
         isPublished={data.is_published}
@@ -201,7 +201,7 @@ export function EditorSidebar({
         onRedo={onRedo}
       />
 
-      <div className="flex-1 p-4 sm:p-6 lg:p-10 space-y-8 sm:space-y-12 overflow-y-auto custom-scroll">
+      <div className="flex-1 min-h-0 p-4 sm:p-6 lg:p-10 space-y-8 sm:space-y-12 overflow-y-auto custom-scroll pb-48">
         <IdentitySection
           username={data.username}
           onUsernameChange={onUsernameChange}
@@ -248,6 +248,6 @@ export function EditorSidebar({
         disabled={usernameStatus === "taken" || !data.username}
         onSave={onSaveClick}
       />
-    </>
+    </div>
   );
 }

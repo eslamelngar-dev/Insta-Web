@@ -1,10 +1,15 @@
-// src/components/templates/NexusLandingTemplate.tsx
 "use client";
 
 import React from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { ExternalLink, CheckCircle2, ArrowRight, Star } from "lucide-react";
+import {
+  ExternalLink,
+  CheckCircle2,
+  ArrowRight,
+  Star,
+  Send,
+} from "lucide-react";
 import {
   TemplateProps,
   SiteData,
@@ -12,6 +17,7 @@ import {
   Feature,
   PortfolioItem,
 } from "@/types";
+import ContactForm from "@/components/ContactForm";
 
 const GithubIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -25,12 +31,15 @@ const GithubIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+const PREVIEW_ID = "preview-mode";
+
 export default function NexusLandingTemplate({ site }: TemplateProps) {
   const siteData = site as SiteData;
   const content = (siteData.content || siteData) as unknown as SiteContent;
   const primaryColor = content.color || "#6366f1";
   const isTemplateDark = content.theme_mode === "dark";
   const show = content.sections_visibility || {};
+  const isPreview = !siteData.id || siteData.id === PREVIEW_ID;
 
   const bgClass = isTemplateDark
     ? "bg-[#050505] text-white"
@@ -73,17 +82,15 @@ export default function NexusLandingTemplate({ site }: TemplateProps) {
             </h1>
             <p className="text-base @[768px]:text-xl @[1024px]:text-2xl opacity-60 max-w-3xl mx-auto mb-12 font-medium leading-relaxed">
               {content.hero?.subtitle ||
-                "We build high-performance products that help you scale your business to the next level."}
+                "We build high-performance products that help you scale."}
             </p>
-            <div className="flex flex-col @[480px]:flex-row items-center justify-center gap-4">
-              <button
-                onClick={scrollToContact}
-                className="px-10 py-5 rounded-full font-black text-sm uppercase tracking-widest text-white shadow-2xl transition-all hover:scale-105 hover:shadow-current/25"
-                style={{ backgroundColor: primaryColor }}
-              >
-                Get Started Now
-              </button>
-            </div>
+            <button
+              onClick={scrollToContact}
+              className="px-10 py-5 rounded-full font-black text-sm uppercase tracking-widest text-white shadow-2xl transition-all hover:scale-105"
+              style={{ backgroundColor: primaryColor }}
+            >
+              Get Started Now
+            </button>
           </motion.div>
         </section>
       )}
@@ -130,7 +137,7 @@ export default function NexusLandingTemplate({ site }: TemplateProps) {
       )}
 
       {show.portfolio !== false && (
-        <section className="px-6 py-24 bg-current/2">
+        <section className="px-6 py-24">
           <div className="max-w-6xl mx-auto">
             <div className="flex flex-col @[768px]:flex-row @[768px]:items-end justify-between mb-16 gap-6">
               <h2 className="text-2xl @[768px]:text-5xl font-black uppercase tracking-tighter leading-none">
@@ -143,7 +150,7 @@ export default function NexusLandingTemplate({ site }: TemplateProps) {
             <div className="grid grid-cols-1 @[768px]:grid-cols-2 gap-8">
               {(content.portfolio || []).map((p: PortfolioItem, i: number) => (
                 <div key={i} className="group cursor-pointer">
-                  <div className="relative aspect-16/10 rounded-[3rem] overflow-hidden mb-6 border border-white/5 bg-slate-800">
+                  <div className="relative aspect-video rounded-[3rem] overflow-hidden mb-6 border border-white/5 bg-slate-800">
                     {p.image ? (
                       <Image
                         src={p.image}
@@ -173,8 +180,7 @@ export default function NexusLandingTemplate({ site }: TemplateProps) {
                           className="flex items-center gap-2 px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest text-white transition-all hover:scale-105 shadow-lg"
                           style={{ backgroundColor: primaryColor }}
                         >
-                          <ExternalLink size={12} />
-                          View
+                          <ExternalLink size={12} /> View
                         </a>
                       )}
                       {p.code_url && (
@@ -188,8 +194,7 @@ export default function NexusLandingTemplate({ site }: TemplateProps) {
                               : "bg-slate-900 text-white hover:bg-slate-700"
                           }`}
                         >
-                          <GithubIcon />
-                          Code
+                          <GithubIcon /> Code
                         </a>
                       )}
                     </div>
@@ -210,19 +215,14 @@ export default function NexusLandingTemplate({ site }: TemplateProps) {
               ))}
             </div>
             <blockquote className="text-xl @[768px]:text-3xl font-bold italic mb-10 leading-snug">
-              &ldquo;
-              {content.testimonial?.text ||
-                "Truly recommended for any scaling startup."}
-              &rdquo;
+              &ldquo;{content.testimonial?.text || "Truly recommended."}&rdquo;
             </blockquote>
-            <div className="flex flex-col items-center">
-              <p className="font-black uppercase tracking-widest text-xs">
-                {content.testimonial?.name || "Client Name"}
-              </p>
-              <p className="text-[10px] opacity-40 uppercase font-bold mt-1">
-                {content.testimonial?.role || "Position"}
-              </p>
-            </div>
+            <p className="font-black uppercase tracking-widest text-xs">
+              {content.testimonial?.name || "Client Name"}
+            </p>
+            <p className="text-[10px] opacity-40 uppercase font-bold mt-1">
+              {content.testimonial?.role || "Position"}
+            </p>
           </div>
         </section>
       )}
@@ -230,32 +230,109 @@ export default function NexusLandingTemplate({ site }: TemplateProps) {
       {show.contact !== false && (
         <footer
           id="nexus-contact"
-          className="px-6 py-24 text-center border-t border-white/5"
+          className="px-6 py-24 border-t border-white/5"
         >
-          <h2 className="text-3xl @[768px]:text-6xl font-black uppercase tracking-tighter mb-12">
-            Ready to start?
-          </h2>
-          <a
-            href={`mailto:${content.email || "#"}`}
-            className="inline-flex items-center gap-4 group"
-          >
-            <span
-              className="text-xl @[768px]:text-5xl font-black underline underline-offset-8 decoration-2 break-all"
-              style={{ textDecorationColor: primaryColor }}
-            >
-              {content.email || "Contact Us"}
-            </span>
-            <div className="w-12 h-12 @[768px]:w-16 @[768px]:h-16 rounded-full border border-current flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
-              <ArrowRight className="group-hover:-rotate-45 transition-transform" />
+          <div className="max-w-2xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl @[768px]:text-6xl font-black uppercase tracking-tighter mb-4">
+                Ready to start?
+              </h2>
+              <p
+                className={
+                  isTemplateDark
+                    ? "text-sm text-white/40"
+                    : "text-sm text-slate-400"
+                }
+              >
+                Fill in the form and we&apos;ll get back to you shortly.
+              </p>
             </div>
-          </a>
-          {content.footer_text && (
-            <p className="mt-16 text-[10px] font-bold uppercase tracking-widest opacity-30">
-              {content.footer_text}
-            </p>
-          )}
+
+            {isPreview ? (
+              <PreviewForm color={primaryColor} dark={isTemplateDark} />
+            ) : (
+              <ContactForm
+                siteId={siteData.id!}
+                accentColor={primaryColor}
+                darkMode={isTemplateDark}
+                source="nexus_contact"
+              />
+            )}
+
+            {content.footer_text && (
+              <p className="mt-16 text-[10px] font-bold uppercase tracking-widest opacity-30 text-center">
+                {content.footer_text}
+              </p>
+            )}
+          </div>
         </footer>
       )}
+    </div>
+  );
+}
+
+function PreviewForm({ color, dark }: { color: string; dark: boolean }) {
+  return (
+    <div className="space-y-4 select-none">
+      <div
+        className={`flex items-center justify-center gap-2.5 py-3 px-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border ${
+          dark
+            ? "bg-indigo-500/10 border-indigo-500/20 text-indigo-300"
+            : "bg-indigo-50 border-indigo-100 text-indigo-600"
+        }`}
+      >
+        <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+        Preview — Form works on published site
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div
+          className={`px-4 py-3.5 rounded-xl text-sm font-medium border ${
+            dark
+              ? "bg-white/[0.06] border-white/[0.12] text-white/30"
+              : "bg-slate-50 border-slate-200 text-slate-300"
+          }`}
+        >
+          Your Name
+        </div>
+        <div
+          className={`px-4 py-3.5 rounded-xl text-sm font-medium border ${
+            dark
+              ? "bg-white/[0.06] border-white/[0.12] text-white/30"
+              : "bg-slate-50 border-slate-200 text-slate-300"
+          }`}
+        >
+          Email Address
+        </div>
+      </div>
+
+      <div
+        className={`px-4 py-3.5 rounded-xl text-sm font-medium border ${
+          dark
+            ? "bg-white/[0.06] border-white/[0.12] text-white/30"
+            : "bg-slate-50 border-slate-200 text-slate-300"
+        }`}
+      >
+        Phone (optional)
+      </div>
+
+      <div
+        className={`px-4 py-3.5 rounded-xl text-sm font-medium border min-h-[120px] ${
+          dark
+            ? "bg-white/[0.06] border-white/[0.12] text-white/30"
+            : "bg-slate-50 border-slate-200 text-slate-300"
+        }`}
+      >
+        Your Message
+      </div>
+
+      <div
+        className="w-full py-4 rounded-xl text-white text-sm font-bold uppercase tracking-widest text-center flex items-center justify-center gap-2.5 cursor-default shadow-xl"
+        style={{ backgroundColor: color, opacity: 0.7 }}
+      >
+        <Send size={15} />
+        Send Message
+      </div>
     </div>
   );
 }

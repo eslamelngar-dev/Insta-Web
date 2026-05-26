@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { EditorLayout } from "@/components/editor/layout/EditorLayout";
+import { ConfirmModal } from "@/components/editor/modals/ConfirmModal";
 import { useEditorInit } from "@/hooks/editor/useEditorInit";
 import { useUsernameValidation } from "@/hooks/editor/useUsernameValidation";
 import { useImageUpload } from "@/hooks/editor/useImageUpload";
@@ -65,10 +66,12 @@ export default function EditorPage({
       toast.error("Please choose an available username before saving.");
       return;
     }
+
     if (!data?.username) {
       toast.error("Please enter a username first.");
       return;
     }
+
     setShowConfirmModal(true);
   };
 
@@ -100,24 +103,34 @@ export default function EditorPage({
   }
 
   return (
-    <EditorLayout
-      data={data}
-      saveStatus={saveStatus}
-      usernameStatus={usernameStatus}
-      loading={loading}
-      uploadingId={uploadingId}
-      canUndo={canUndo}
-      canRedo={canRedo}
-      onUndo={undo}
-      onRedo={redo}
-      onUsernameChange={(val) =>
-        setData((prev) => ({ ...prev, username: val }))
-      }
-      updateContent={updateContent}
-      handleImageUpload={handleImageUpload}
-      onSaveClick={handleSaveClick}
-      mediaLibrary={mediaLibrary}
-      onMediaSelect={handleMediaSelect}
-    />
+    <>
+      <EditorLayout
+        data={data}
+        saveStatus={saveStatus}
+        usernameStatus={usernameStatus}
+        loading={loading}
+        uploadingId={uploadingId}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={undo}
+        onRedo={redo}
+        onUsernameChange={(val) =>
+          setData((prev) => ({ ...prev, username: val }))
+        }
+        updateContent={updateContent}
+        handleImageUpload={handleImageUpload}
+        onSaveClick={handleSaveClick}
+        mediaLibrary={mediaLibrary}
+        onMediaSelect={handleMediaSelect}
+      />
+
+      <ConfirmModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onSaveAsDraft={handleSaveAsDraft}
+        onPublish={handlePublish}
+        loading={loading}
+      />
+    </>
   );
 }

@@ -13,6 +13,7 @@ import {
   Layout,
   Menu,
   X,
+  Inbox,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -21,6 +22,7 @@ import { useTheme } from "next-themes";
 const MENU_ITEMS = [
   { icon: LayoutDashboard, label: "My Sites", href: "/dashboard" },
   { icon: Layout, label: "Templates", href: "/dashboard/templates" },
+  { icon: Inbox, label: "Leads", href: "/dashboard/leads" },
   { icon: Globe, label: "Domains", href: "/dashboard/domains" },
   { icon: CreditCard, label: "Billing", href: "/dashboard/billing" },
   { icon: Settings, label: "Settings", href: "/dashboard/settings" },
@@ -32,24 +34,19 @@ export default function Sidebar() {
   const [mounted, setMounted] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
-
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMobileOpen(false);
   }, [pathname]);
-
   useEffect(() => {
-    if (mobileOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
   }, [mobileOpen]);
+
+  const isActive = (href: string) =>
+    href === "/dashboard" ? pathname === href : pathname.startsWith(href);
 
   const sidebarContent = (
     <>
@@ -83,13 +80,13 @@ export default function Sidebar() {
 
       <nav className="flex-1 space-y-2">
         {MENU_ITEMS.map((item) => {
-          const isActive = pathname === item.href;
+          const active = isActive(item.href);
           return (
             <Link
               key={item.label}
               href={item.href}
               className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-all ${
-                isActive
+                active
                   ? "bg-indigo-600 text-white shadow-xl shadow-indigo-600/20 translate-x-1"
                   : "text-slate-500 dark:text-slate-400 hover:bg-indigo-500/5 dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-white"
               }`}
