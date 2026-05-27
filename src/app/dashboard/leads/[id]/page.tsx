@@ -7,6 +7,7 @@ import Link from "next/link";
 import { LeadDetailCard } from "@/components/leads/LeadDetailCard";
 import { LeadNotes } from "@/components/leads/LeadNotes";
 import { useLeadActions } from "@/hooks/leads/useLeadActions";
+import { parseApiResponse } from "@/types/api";
 import type { Lead, LeadNote, LeadStatus } from "@/types/leads";
 
 interface LeadWithNotes extends Lead {
@@ -20,6 +21,7 @@ export default function LeadDetailPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+
   const [lead, setLead] = useState<LeadWithNotes | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,13 +37,26 @@ export default function LeadDetailPage({
   } = useLeadActions();
 
   const fetchLead = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
     try {
-      const res = await fetch(`/api/leads/${id}`);
-      if (!res.ok) throw new Error("Lead not found");
-      const json = await res.json();
-      setLead(json.data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load");
+      const res = await fetch(`/api/leads/${id}`, {
+        cache: "no-store",
+      });
+
+      const result = await parseApiResponse<LeadWithNotes>(res);
+
+      if (!result.ok) {
+        setLead(null);
+        setError(result.message);
+        return;
+      }
+
+      setLead(result.data);
+    } catch {
+      setLead(null);
+      setError("Failed to load lead. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -53,34 +68,47 @@ export default function LeadDetailPage({
 
   const handleStatusChange = async (status: LeadStatus) => {
     if (!lead) return;
+
     const updated = await updateStatus(lead.id, status);
-    if (updated)
+
+    if (updated) {
       setLead((prev) => (prev ? { ...prev, status: updated.status } : prev));
+    }
   };
 
   const handleDelete = async () => {
     if (!lead) return;
+
     const ok = await deleteLead(lead.id);
-    if (ok) router.push("/dashboard/leads");
+    if (ok) {
+      router.push("/dashboard/leads");
+    }
   };
 
   const handleAddNote = async (content: string) => {
     if (!lead) return;
+
     const note = await addNote(lead.id, content);
-    if (note)
+
+    if (note) {
       setLead((prev) =>
         prev ? { ...prev, notes: [note, ...prev.notes] } : prev,
       );
+    }
   };
 
   const handleDeleteNote = async (noteId: string) => {
-    const ok = await deleteNote(noteId);
-    if (ok)
+    if (!lead) return;
+
+    const ok = await deleteNote(lead.id, noteId);
+
+    if (ok) {
       setLead((prev) =>
         prev
           ? { ...prev, notes: prev.notes.filter((n) => n.id !== noteId) }
           : prev,
       );
+    }
   };
 
   if (isLoading) {
@@ -97,6 +125,7 @@ export default function LeadDetailPage({
         <p className="text-sm font-bold text-slate-400">
           {error || "Lead not found"}
         </p>
+
         <Link
           href="/dashboard/leads"
           className="text-indigo-500 text-sm font-bold hover:underline"
@@ -118,6 +147,7 @@ export default function LeadDetailPage({
             <ArrowLeft size={14} />
             Back to Leads
           </Link>
+
           <button
             onClick={handleDelete}
             disabled={isDeleting}
@@ -140,6 +170,7 @@ export default function LeadDetailPage({
               isUpdating={isUpdating}
             />
           </div>
+
           <div className="lg:col-span-2">
             <LeadNotes
               notes={lead.notes}

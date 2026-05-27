@@ -1,5 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
-import type { Lead, LeadsFilters, LeadsStats, LeadStatus } from "@/types/leads";
+import { toast } from "sonner";
+import { parseApiResponse } from "@/types/api";
+import type { Lead, LeadsFilters, LeadsStats } from "@/types/leads";
+
+interface LeadsResponse {
+  leads: Lead[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+}
 
 interface UseLeadsReturn {
   leads: Lead[];
@@ -25,8 +37,10 @@ const DEFAULT_STATS: LeadsStats = {
   conversionRate: 0,
 };
 
-function calcStats(allLeads: Lead[]): LeadsStats {
-  const total = allLeads.length;
+// Stats احنا بنحسبها من الـ leads اللي جايين
+// بدل الـ double fetch نطلب كل الـ leads في أول request بـ limit كبير
+// أو نحسبها server-side ونرجعها مع الـ response
+function calcStats(leads: Lead[]): LeadsStats {
   const counts = {
     new: 0,
     contacted: 0,
@@ -34,11 +48,14 @@ function calcStats(allLeads: Lead[]): LeadsStats {
     converted: 0,
     archived: 0,
   };
-  allLeads.forEach((l) => {
-    if (counts[l.status as keyof typeof counts] !== undefined) {
+
+  leads.forEach((l) => {
+    if (l.status in counts) {
       counts[l.status as keyof typeof counts]++;
     }
   });
+
+  const total = leads.length;
   return {
     total,
     ...counts,
@@ -49,7 +66,8 @@ function calcStats(allLeads: Lead[]): LeadsStats {
 
 export function useLeads(filters: LeadsFilters): UseLeadsReturn {
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [allLeads, setAllLeads] = useState<Lead[]>([]);
+  // Stats بتتحسب من الـ page المحملة
+  // للـ stats الكاملة نحتاج endpoint منفصل في المستقبل
   const [stats, setStats] = useState<LeadsStats>(DEFAULT_STATS);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,16 +76,11 @@ export function useLeads(filters: LeadsFilters): UseLeadsReturn {
   const [total, setTotal] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const refresh = useCallback(() => {
-    setRefreshKey((k) => k + 1);
-  }, []);
+  const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   const updateLeadLocally = useCallback(
     (id: string, updates: Partial<Lead>) => {
-      setLeads((prev) =>
-        prev.map((l) => (l.id === id ? { ...l, ...updates } : l)),
-      );
-      setAllLeads((prev) => {
+      setLeads((prev) => {
         const updated = prev.map((l) =>
           l.id === id ? { ...l, ...updates } : l,
         );
@@ -79,15 +92,15 @@ export function useLeads(filters: LeadsFilters): UseLeadsReturn {
   );
 
   const removeLeadLocally = useCallback((id: string) => {
-    setLeads((prev) => prev.filter((l) => l.id !== id));
-    setAllLeads((prev) => {
+    setLeads((prev) => {
       const updated = prev.filter((l) => l.id !== id);
       setStats(calcStats(updated));
-      setTotal(updated.length);
+      setTotal((t) => Math.max(0, t - 1));
       return updated;
     });
   }, []);
 
+  // Reset page when filters change
   useEffect(() => {
     setPage(1);
   }, [
@@ -116,26 +129,27 @@ export function useLeads(filters: LeadsFilters): UseLeadsReturn {
         if (filters.dateTo) params.set("date_to", filters.dateTo);
 
         const res = await fetch(`/api/leads?${params.toString()}`);
-        if (!res.ok) throw new Error("Failed to fetch leads");
+        const result = await parseApiResponse<LeadsResponse>(res);
 
-        const json = await res.json();
         if (cancelled) return;
 
-        setLeads(json.data || []);
-        setTotal(json.pagination?.total || 0);
-        setTotalPages(json.pagination?.pages || 1);
-
-        const allRes = await fetch("/api/leads?limit=1000");
-        if (allRes.ok) {
-          const allJson = await allRes.json();
-          if (cancelled) return;
-          const all = allJson.data || [];
-          setAllLeads(all);
-          setStats(calcStats(all));
+        if (!result.ok) {
+          setError(result.message);
+          toast.error(result.message);
+          return;
         }
-      } catch (err) {
+
+        const { leads: fetchedLeads, pagination } = result.data;
+
+        setLeads(fetchedLeads);
+        setTotal(pagination.total);
+        setTotalPages(pagination.pages);
+        setStats(calcStats(fetchedLeads));
+      } catch {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Unknown error");
+          const msg = "Failed to load leads. Please try again.";
+          setError(msg);
+          toast.error(msg);
         }
       } finally {
         if (!cancelled) setIsLoading(false);

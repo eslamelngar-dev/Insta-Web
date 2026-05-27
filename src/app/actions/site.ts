@@ -1,13 +1,40 @@
 "use server";
 
-import { createClient } from "@supabase/supabase-js";
-import { SiteContent } from "@/types";
+import { supabaseAdmin } from "@/lib/supabase-admin";
+import { logger } from "@/lib/logger";
+import { AppError, ErrorCode } from "@/lib/errors";
+import type { SiteContent } from "@/types";
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+// ===== Action Result Type =====
+export type ActionResult<T = void> =
+  | { success: true; data: T }
+  | { success: false; error: string; code: string };
 
+// ===== Helper =====
+function actionError(error: unknown): ActionResult<never> {
+  if (error instanceof AppError) {
+    return {
+      success: false,
+      error: error.userMessage,
+      code: error.code,
+    };
+  }
+
+  if (error instanceof Error) {
+    logger.error("Server Action Error", {
+      message: error.message,
+      stack: error.stack,
+    });
+  }
+
+  return {
+    success: false,
+    error: "Something went wrong. Please try again.",
+    code: ErrorCode.INTERNAL_ERROR,
+  };
+}
+
+// ===== Storage Path Extractor =====
 const extractStoragePaths = (content: SiteContent | null): string[] => {
   if (!content) return [];
   const paths: string[] = [];
@@ -15,33 +42,38 @@ const extractStoragePaths = (content: SiteContent | null): string[] => {
   const extractPath = (url?: string) => {
     if (!url) return;
     const marker = "/storage/v1/object/public/avatars/";
-    if (url.includes(marker)) {
-      const parts = url.split(marker);
-      if (parts.length > 1) {
-        paths.push(parts[1]);
-      }
+    const index = url.indexOf(marker);
+    if (index !== -1) {
+      paths.push(url.slice(index + marker.length));
     }
   };
 
   extractPath(content.cover_url);
   extractPath(content.avatar_url);
-
-  if (content.portfolio) {
-    content.portfolio.forEach((p) => extractPath(p.image));
-  }
-
-  if (content.blocks) {
-    content.blocks.forEach((b) => {
-      extractPath(b.data?.image_url);
-      extractPath(b.data?.avatar_url);
-    });
-  }
+  content.portfolio?.forEach((p) => extractPath(p.image));
+  content.blocks?.forEach((b) => {
+    extractPath(b.data?.image_url);
+    extractPath(b.data?.avatar_url);
+  });
 
   return paths;
 };
 
-export async function deleteSiteAction(siteId: string, userId: string) {
+// ===== Delete Site Action =====
+export async function deleteSiteAction(
+  siteId: string,
+  userId: string,
+): Promise<ActionResult<{ deleted: boolean }>> {
   try {
+    // Input validation
+    if (!siteId || !userId) {
+      return {
+        success: false,
+        error: "Invalid request.",
+        code: ErrorCode.INVALID_INPUT,
+      };
+    }
+
     const { data: site, error: fetchError } = await supabaseAdmin
       .from("sites")
       .select("content")
@@ -50,13 +82,28 @@ export async function deleteSiteAction(siteId: string, userId: string) {
       .single();
 
     if (fetchError || !site) {
-      throw new Error("Site not found or unauthorized");
+      return {
+        success: false,
+        error: "Site not found.",
+        code: ErrorCode.SITE_NOT_FOUND,
+      };
     }
 
+    // Delete storage files (non-blocking - don't fail if storage fails)
     const filesToDelete = extractStoragePaths(site.content as SiteContent);
-
     if (filesToDelete.length > 0) {
-      await supabaseAdmin.storage.from("avatars").remove(filesToDelete);
+      const { error: storageError } = await supabaseAdmin.storage
+        .from("avatars")
+        .remove(filesToDelete);
+
+      if (storageError) {
+        // نسجل الخطأ لكن ما نوقف العملية
+        logger.warn("Failed to delete site storage files", {
+          siteId,
+          files: filesToDelete,
+          error: storageError.message,
+        });
+      }
     }
 
     const { error: deleteError } = await supabaseAdmin
@@ -66,14 +113,21 @@ export async function deleteSiteAction(siteId: string, userId: string) {
       .eq("user_id", userId);
 
     if (deleteError) {
-      throw new Error("Failed to delete site record");
+      logger.error("Failed to delete site record", {
+        siteId,
+        error: deleteError.message,
+      });
+      return {
+        success: false,
+        error: "Failed to delete site. Please try again.",
+        code: ErrorCode.DATABASE_ERROR,
+      };
     }
 
-    return { success: true };
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      return { success: false, error: error.message };
-    }
-    return { success: false, error: "Failed to delete site" };
+    logger.info("Site deleted successfully", { siteId, userId });
+
+    return { success: true, data: { deleted: true } };
+  } catch (error) {
+    return actionError(error);
   }
 }

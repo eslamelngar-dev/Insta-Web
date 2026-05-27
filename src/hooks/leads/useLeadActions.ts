@@ -1,4 +1,6 @@
 import { useState, useCallback } from "react";
+import { toast } from "sonner";
+import { parseApiResponse } from "@/types/api";
 import type {
   Lead,
   LeadNote,
@@ -14,7 +16,7 @@ interface UseLeadActionsReturn {
   updateStatus: (id: string, status: LeadStatus) => Promise<Lead | null>;
   deleteLead: (id: string) => Promise<boolean>;
   addNote: (leadId: string, content: string) => Promise<LeadNote | null>;
-  deleteNote: (noteId: string) => Promise<boolean>;
+  deleteNote: (leadId: string, noteId: string) => Promise<boolean>;
 }
 
 export function useLeadActions(): UseLeadActionsReturn {
@@ -31,10 +33,17 @@ export function useLeadActions(): UseLeadActionsReturn {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        if (!res.ok) return null;
-        const json = await res.json();
-        return json.data;
+
+        const result = await parseApiResponse<Lead>(res);
+
+        if (!result.ok) {
+          toast.error(result.message);
+          return null;
+        }
+
+        return result.data;
       } catch {
+        toast.error("Connection error. Please check your internet.");
         return null;
       } finally {
         setIsUpdating(false);
@@ -45,7 +54,11 @@ export function useLeadActions(): UseLeadActionsReturn {
 
   const updateStatus = useCallback(
     async (id: string, status: LeadStatus): Promise<Lead | null> => {
-      return updateLead(id, { status });
+      const result = await updateLead(id, { status });
+      if (result) {
+        toast.success(`Lead marked as ${status}.`);
+      }
+      return result;
     },
     [updateLead],
   );
@@ -54,8 +67,17 @@ export function useLeadActions(): UseLeadActionsReturn {
     setIsDeleting(true);
     try {
       const res = await fetch(`/api/leads/${id}`, { method: "DELETE" });
-      return res.ok;
+      const result = await parseApiResponse<{ deleted: boolean }>(res);
+
+      if (!result.ok) {
+        toast.error(result.message);
+        return false;
+      }
+
+      toast.success("Lead deleted.");
+      return true;
     } catch {
+      toast.error("Connection error. Please check your internet.");
       return false;
     } finally {
       setIsDeleting(false);
@@ -71,10 +93,17 @@ export function useLeadActions(): UseLeadActionsReturn {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ content }),
         });
-        if (!res.ok) return null;
-        const json = await res.json();
-        return json.data;
+
+        const result = await parseApiResponse<LeadNote>(res);
+
+        if (!result.ok) {
+          toast.error(result.message);
+          return null;
+        }
+
+        return result.data;
       } catch {
+        toast.error("Failed to add note. Please try again.");
         return null;
       } finally {
         setIsAddingNote(false);
@@ -83,16 +112,29 @@ export function useLeadActions(): UseLeadActionsReturn {
     [],
   );
 
-  const deleteNote = useCallback(async (noteId: string): Promise<boolean> => {
-    try {
-      const res = await fetch(`/api/leads/notes/${noteId}`, {
-        method: "DELETE",
-      });
-      return res.ok;
-    } catch {
-      return false;
-    }
-  }, []);
+  // ← هنا صلحنا الـ URL الغلط
+  const deleteNote = useCallback(
+    async (leadId: string, noteId: string): Promise<boolean> => {
+      try {
+        const res = await fetch(`/api/leads/${leadId}/notes/${noteId}`, {
+          method: "DELETE",
+        });
+
+        const result = await parseApiResponse<{ deleted: boolean }>(res);
+
+        if (!result.ok) {
+          toast.error(result.message);
+          return false;
+        }
+
+        return true;
+      } catch {
+        toast.error("Failed to delete note. Please try again.");
+        return false;
+      }
+    },
+    [],
+  );
 
   return {
     isUpdating,

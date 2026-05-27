@@ -1,56 +1,64 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase-server";
+import {
+  withApiHandler,
+  createdResponse,
+  type RouteContext,
+} from "@/lib/api-response";
+import {
+  UnauthorizedError,
+  NotFoundError,
+  ValidationError,
+  normalizeSupabaseError,
+} from "@/lib/errors";
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
-    const { id } = await params;
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+type Context = RouteContext<{ id: string }>;
 
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+export const POST = withApiHandler(async (req: NextRequest, ctx: Context) => {
+  const { id } = await ctx.params;
+  const supabase = await createClient();
 
-    const { content } = await req.json();
-    if (!content?.trim()) {
-      return NextResponse.json(
-        { error: "Content is required" },
-        { status: 400 },
-      );
-    }
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
 
-    const { data: lead } = await supabase
-      .from("leads")
-      .select("id")
-      .eq("id", id)
-      .eq("user_id", user.id)
-      .single();
+  if (authError || !user) throw new UnauthorizedError();
 
-    if (!lead) {
-      return NextResponse.json({ error: "Lead not found" }, { status: 404 });
-    }
+  const { content } = (await req.json()) as { content?: unknown };
 
-    const { data, error } = await supabase
-      .from("lead_notes")
-      .insert({ lead_id: id, user_id: user.id, content: content.trim() })
-      .select()
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ data }, { status: 201 });
-  } catch {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+  if (typeof content !== "string" || !content.trim()) {
+    throw new ValidationError({ content: "Note content cannot be empty." });
   }
-}
+
+  const trimmedContent = content.trim();
+
+  if (trimmedContent.length > 2000) {
+    throw new ValidationError({
+      content: "Note cannot exceed 2000 characters.",
+    });
+  }
+
+  const { data: lead } = await supabase
+    .from("leads")
+    .select("id")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!lead) throw new NotFoundError("lead");
+
+  const { data, error } = await supabase
+    .from("lead_notes")
+    .insert({
+      lead_id: id,
+      user_id: user.id,
+      content: trimmedContent,
+    })
+    .select()
+    .single();
+
+  if (error) throw normalizeSupabaseError(error);
+
+  return createdResponse(data);
+});

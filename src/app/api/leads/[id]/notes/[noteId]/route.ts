@@ -1,37 +1,35 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase-server";
+import {
+  withApiHandler,
+  successResponse,
+  type RouteContext,
+} from "@/lib/api-response";
+import { UnauthorizedError, normalizeSupabaseError } from "@/lib/errors";
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ noteId: string }> },
-) {
-  try {
-    const { noteId } = await params;
+type Context = RouteContext<{ id: string; noteId: string }>;
+
+export const DELETE = withApiHandler(
+  async (_req: NextRequest, ctx: Context) => {
+    const { id, noteId } = await ctx.params;
     const supabase = await createClient();
+
     const {
       data: { user },
       error: authError,
     } = await supabase.auth.getUser();
 
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (authError || !user) throw new UnauthorizedError();
 
     const { error } = await supabase
       .from("lead_notes")
       .delete()
       .eq("id", noteId)
+      .eq("lead_id", id)
       .eq("user_id", user.id);
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    if (error) throw normalizeSupabaseError(error);
 
-    return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
-  }
-}
+    return successResponse({ deleted: true });
+  },
+);
