@@ -41,13 +41,12 @@ export function EditorLayout(props: Props) {
   };
 
   return (
-    <div className="h-screen flex flex-col lg:flex-row overflow-hidden bg-white dark:bg-slate-950 font-sans">
-     
-      <div className="w-full lg:w-115 xl:w-120 h-full shrink-0 border-r border-slate-200 dark:border-white/5 bg-white dark:bg-slate-950 z-20 shadow-xl">
+    <div className="h-screen flex flex-col lg:flex-row overflow-hidden bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100 font-sans">
+      <div className="w-full lg:w-115 xl:w-120 h-full shrink-0 border-r border-slate-200 dark:border-white/5 bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100 z-20 shadow-xl">
         <EditorSidebar {...combinedProps} />
       </div>
 
-      <div className="flex-1 h-full overflow-hidden hidden lg:block bg-slate-50 dark:bg-slate-950">
+      <div className="flex-1 h-full overflow-hidden hidden lg:block bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
         <PreviewPanel data={props.data} />
       </div>
 
