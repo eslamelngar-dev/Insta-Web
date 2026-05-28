@@ -1,29 +1,19 @@
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase-server";
 import {
   withApiHandler,
   successResponse,
   type RouteContext,
 } from "@/lib/api-response";
-import {
-  UnauthorizedError,
-  NotFoundError,
-  ValidationError,
-  normalizeSupabaseError,
-} from "@/lib/errors";
+import { NotFoundError, normalizeSupabaseError } from "@/lib/errors";
+import { requireUser } from "@/lib/auth";
+import { validate, validateJson } from "@/lib/validate";
+import { leadParamsSchema, updateLeadSchema } from "@/lib/validations";
 
 type Context = RouteContext<{ id: string }>;
 
 export const GET = withApiHandler(async (_req: NextRequest, ctx: Context) => {
-  const { id } = await ctx.params;
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) throw new UnauthorizedError();
+  const { id } = validate(leadParamsSchema, await ctx.params);
+  const { supabase, user } = await requireUser();
 
   const { data: lead, error: leadError } = await supabase
     .from("leads")
@@ -32,74 +22,35 @@ export const GET = withApiHandler(async (_req: NextRequest, ctx: Context) => {
     .eq("user_id", user.id)
     .single();
 
-  if (leadError || !lead) throw new NotFoundError("lead");
+  if (leadError || !lead) {
+    throw new NotFoundError("lead");
+  }
 
-  const { data: notes } = await supabase
+  const { data: notes, error: notesError } = await supabase
     .from("lead_notes")
     .select("*")
     .eq("lead_id", id)
     .order("created_at", { ascending: false });
 
+  if (notesError) {
+    throw normalizeSupabaseError(notesError);
+  }
+
   return successResponse({ ...lead, notes: notes ?? [] });
 });
 
 export const PATCH = withApiHandler(async (req: NextRequest, ctx: Context) => {
-  const { id } = await ctx.params;
-  const supabase = await createClient();
+  const { id } = validate(leadParamsSchema, await ctx.params);
+  const { supabase, user } = await requireUser();
+  const validated = await validateJson(req, updateLeadSchema);
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) throw new UnauthorizedError();
-
-  const body = (await req.json()) as Record<string, unknown>;
-  const validationErrors: Record<string, string> = {};
-
-  if (body.email !== undefined) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (typeof body.email !== "string" || !emailRegex.test(body.email)) {
-      validationErrors.email = "Please enter a valid email address.";
-    }
-  }
-
-  const validStatuses = new Set([
-    "new",
-    "contacted",
-    "qualified",
-    "converted",
-    "archived",
-  ]);
-
-  if (body.status !== undefined) {
-    if (typeof body.status !== "string" || !validStatuses.has(body.status)) {
-      validationErrors.status = "Invalid status value.";
-    }
-  }
-
-  if (Object.keys(validationErrors).length > 0) {
-    throw new ValidationError(validationErrors);
-  }
-
-  const allowedFields = [
-    "status",
-    "name",
-    "email",
-    "phone",
-    "message",
-  ] as const;
   const updates: Record<string, unknown> = {};
 
-  for (const key of allowedFields) {
-    if (body[key] !== undefined) {
-      updates[key] = body[key];
-    }
-  }
-
-  if (Object.keys(updates).length === 0) {
-    throw new ValidationError({ general: "No valid fields to update." });
-  }
+  if (validated.status !== undefined) updates.status = validated.status;
+  if (validated.name !== undefined) updates.name = validated.name;
+  if (validated.email !== undefined) updates.email = validated.email;
+  if (validated.phone !== undefined) updates.phone = validated.phone;
+  if (validated.message !== undefined) updates.message = validated.message;
 
   const { data, error } = await supabase
     .from("leads")
@@ -109,31 +60,45 @@ export const PATCH = withApiHandler(async (req: NextRequest, ctx: Context) => {
     .select()
     .single();
 
-  if (error) throw normalizeSupabaseError(error);
-  if (!data) throw new NotFoundError("lead");
+  if (error && error.code === "PGRST116") {
+    throw new NotFoundError("lead");
+  }
+
+  if (error) {
+    throw normalizeSupabaseError(error);
+  }
+
+  if (!data) {
+    throw new NotFoundError("lead");
+  }
 
   return successResponse(data);
 });
 
 export const DELETE = withApiHandler(
   async (_req: NextRequest, ctx: Context) => {
-    const { id } = await ctx.params;
-    const supabase = await createClient();
+    const { id } = validate(leadParamsSchema, await ctx.params);
+    const { supabase, user } = await requireUser();
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) throw new UnauthorizedError();
-
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("leads")
       .delete()
       .eq("id", id)
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      .select("id")
+      .single();
 
-    if (error) throw normalizeSupabaseError(error);
+    if (error && error.code === "PGRST116") {
+      throw new NotFoundError("lead");
+    }
+
+    if (error) {
+      throw normalizeSupabaseError(error);
+    }
+
+    if (!data) {
+      throw new NotFoundError("lead");
+    }
 
     return successResponse({ deleted: true });
   },

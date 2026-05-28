@@ -50,12 +50,14 @@ export type RouteContext<TParams extends RouteParams = RouteParams> = {
   params: Promise<TParams>;
 };
 
-type StaticHandlerFn = (req: NextRequest) => Promise<NextResponse>;
+type HandlerResponse = Response | NextResponse;
+
+type StaticHandlerFn = (req: NextRequest) => Promise<HandlerResponse>;
 
 type DynamicHandlerFn<TParams extends RouteParams> = (
   req: NextRequest,
   context: RouteContext<TParams>,
-) => Promise<NextResponse>;
+) => Promise<HandlerResponse>;
 
 export function withApiHandler(handler: StaticHandlerFn): StaticHandlerFn;
 export function withApiHandler<TParams extends RouteParams>(
@@ -68,10 +70,10 @@ export function withApiHandler<TParams extends RouteParams>(
     const requestId = crypto.randomUUID();
     const start = Date.now();
     const method = req.method;
-    const url = new URL(req.url).pathname;
+    const url = req.nextUrl.pathname;
 
     try {
-      let response: NextResponse;
+      let response: HandlerResponse;
 
       if (handler.length > 1) {
         if (context === undefined) {

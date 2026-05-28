@@ -1,32 +1,19 @@
-// ===== Error Codes =====
 export const ErrorCode = {
-  // 400
   VALIDATION_ERROR: "VALIDATION_ERROR",
   INVALID_INPUT: "INVALID_INPUT",
   MISSING_FIELD: "MISSING_FIELD",
-
-  // 401
   UNAUTHORIZED: "UNAUTHORIZED",
   SESSION_EXPIRED: "SESSION_EXPIRED",
-
-  // 403
   FORBIDDEN: "FORBIDDEN",
   UPGRADE_REQUIRED: "UPGRADE_REQUIRED",
-
-  // 404
   NOT_FOUND: "NOT_FOUND",
   SITE_NOT_FOUND: "SITE_NOT_FOUND",
   LEAD_NOT_FOUND: "LEAD_NOT_FOUND",
-
-  // 409
+  NOTE_NOT_FOUND: "NOTE_NOT_FOUND",
   CONFLICT: "CONFLICT",
   USERNAME_TAKEN: "USERNAME_TAKEN",
   DUPLICATE_ENTRY: "DUPLICATE_ENTRY",
-
-  // 429
   RATE_LIMITED: "RATE_LIMITED",
-
-  // 500
   INTERNAL_ERROR: "INTERNAL_ERROR",
   DATABASE_ERROR: "DATABASE_ERROR",
   EXTERNAL_SERVICE_ERROR: "EXTERNAL_SERVICE_ERROR",
@@ -34,63 +21,49 @@ export const ErrorCode = {
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
-// ===== User-facing messages =====
-// نفصل الـ message اللي يشوفها المستخدم عن الـ internal error
 const ERROR_MESSAGES: Record<ErrorCode, string> = {
   VALIDATION_ERROR: "Please check your input and try again.",
   INVALID_INPUT: "Invalid input provided.",
   MISSING_FIELD: "A required field is missing.",
-
   UNAUTHORIZED: "Please sign in to continue.",
   SESSION_EXPIRED: "Your session has expired. Please sign in again.",
-
   FORBIDDEN: "You don't have permission to perform this action.",
   UPGRADE_REQUIRED: "This feature requires a plan upgrade.",
-
   NOT_FOUND: "The requested resource was not found.",
   SITE_NOT_FOUND: "Site not found.",
   LEAD_NOT_FOUND: "Lead not found.",
-
+  NOTE_NOT_FOUND: "Note not found.",
   CONFLICT: "A conflict occurred with existing data.",
   USERNAME_TAKEN: "This username is already taken.",
   DUPLICATE_ENTRY: "This entry already exists.",
-
   RATE_LIMITED: "Too many requests. Please slow down.",
-
   INTERNAL_ERROR: "Something went wrong. Please try again.",
   DATABASE_ERROR: "Something went wrong. Please try again.",
   EXTERNAL_SERVICE_ERROR:
     "An external service is unavailable. Please try again.",
 };
 
-// ===== HTTP Status mapping =====
 const ERROR_STATUS: Record<ErrorCode, number> = {
-  VALIDATION_ERROR: 400,
+  VALIDATION_ERROR: 422,
   INVALID_INPUT: 400,
   MISSING_FIELD: 400,
-
   UNAUTHORIZED: 401,
   SESSION_EXPIRED: 401,
-
   FORBIDDEN: 403,
   UPGRADE_REQUIRED: 403,
-
   NOT_FOUND: 404,
   SITE_NOT_FOUND: 404,
   LEAD_NOT_FOUND: 404,
-
+  NOTE_NOT_FOUND: 404,
   CONFLICT: 409,
   USERNAME_TAKEN: 409,
   DUPLICATE_ENTRY: 409,
-
   RATE_LIMITED: 429,
-
   INTERNAL_ERROR: 500,
   DATABASE_ERROR: 500,
   EXTERNAL_SERVICE_ERROR: 502,
 };
 
-// ===== Base App Error =====
 export class AppError extends Error {
   public readonly code: ErrorCode;
   public readonly statusCode: number;
@@ -119,7 +92,6 @@ export class AppError extends Error {
   }
 }
 
-// ===== Specific Error Classes =====
 export class ValidationError extends AppError {
   constructor(details: Record<string, string>, message?: string) {
     super({ code: ErrorCode.VALIDATION_ERROR, message, details });
@@ -137,9 +109,10 @@ export class UnauthorizedError extends AppError {
 }
 
 export class ForbiddenError extends AppError {
-  constructor(requiresUpgrade = false) {
+  constructor(requiresUpgrade = false, details?: Record<string, string>) {
     super({
       code: requiresUpgrade ? ErrorCode.UPGRADE_REQUIRED : ErrorCode.FORBIDDEN,
+      details,
     });
     this.name = "ForbiddenError";
   }
@@ -150,9 +123,10 @@ export class NotFoundError extends AppError {
     const codeMap = {
       site: ErrorCode.SITE_NOT_FOUND,
       lead: ErrorCode.LEAD_NOT_FOUND,
-      note: ErrorCode.NOT_FOUND,
+      note: ErrorCode.NOTE_NOT_FOUND,
       generic: ErrorCode.NOT_FOUND,
-    };
+    } as const;
+
     super({ code: codeMap[resource] });
     this.name = "NotFoundError";
   }
@@ -175,42 +149,34 @@ export class DatabaseError extends AppError {
 }
 
 export class RateLimitError extends AppError {
-  constructor() {
-    super({ code: ErrorCode.RATE_LIMITED });
+  constructor(details?: Record<string, string>) {
+    super({ code: ErrorCode.RATE_LIMITED, details });
     this.name = "RateLimitError";
   }
 }
 
-// ===== Supabase Error Normalizer =====
-// بنحول Supabase errors لـ AppErrors مفهومة
 export function normalizeSupabaseError(error: {
   code?: string;
   message?: string;
 }): AppError {
   const { code, message = "" } = error;
 
-  // Postgres error codes
-  // https://www.postgresql.org/docs/current/errcodes-appendix.html
   if (code === "23505") {
-    // unique_violation
-    if (message.includes("username")) {
+    if (message.toLowerCase().includes("username")) {
       return new ConflictError(true);
     }
     return new ConflictError();
   }
 
   if (code === "23503") {
-    // foreign_key_violation
     return new NotFoundError("generic");
   }
 
   if (code === "PGRST116") {
-    // row not found (PostgREST)
     return new NotFoundError("generic");
   }
 
   if (code === "42501") {
-    // insufficient_privilege (RLS)
     return new ForbiddenError();
   }
 

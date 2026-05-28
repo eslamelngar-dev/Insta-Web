@@ -1,49 +1,78 @@
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase-server";
 import {
   withApiHandler,
   successResponse,
   createdResponse,
 } from "@/lib/api-response";
-import {
-  UnauthorizedError,
-  NotFoundError,
-  ValidationError,
-  normalizeSupabaseError,
-} from "@/lib/errors";
+import { NotFoundError, normalizeSupabaseError } from "@/lib/errors";
+import { requireUser } from "@/lib/auth";
+import { validateJson, validateQuery } from "@/lib/validate";
+import { createLeadSchema, leadsQuerySchema } from "@/lib/validations";
+
+export const GET = withApiHandler(async (req: NextRequest) => {
+  const { supabase, user } = await requireUser();
+
+  const query = validateQuery(leadsQuerySchema, req.nextUrl.searchParams);
+
+  const from = (query.page - 1) * query.limit;
+  const to = from + query.limit - 1;
+
+  let dbQuery = supabase
+    .from("leads")
+    .select("*", { count: "exact" })
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  if (query.status && query.status !== "all") {
+    dbQuery = dbQuery.eq("status", query.status);
+  }
+
+  if (query.site_id && query.site_id !== "all") {
+    dbQuery = dbQuery.eq("site_id", query.site_id);
+  }
+
+  if (query.search) {
+    dbQuery = dbQuery.or(
+      `name.ilike.%${query.search}%,email.ilike.%${query.search}%,phone.ilike.%${query.search}%`,
+    );
+  }
+
+  if (query.date_from) {
+    dbQuery = dbQuery.gte("created_at", query.date_from);
+  }
+
+  if (query.date_to) {
+    dbQuery = dbQuery.lte("created_at", query.date_to);
+  }
+
+  const { data, error, count } = await dbQuery;
+
+  if (error) throw normalizeSupabaseError(error);
+
+  const total = count ?? 0;
+  const pages = Math.ceil(total / query.limit);
+
+  return successResponse({
+    leads: data ?? [],
+    pagination: {
+      page: query.page,
+      limit: query.limit,
+      total,
+      pages,
+    },
+  });
+});
 
 export const POST = withApiHandler(async (req: NextRequest) => {
-  const body = await req.json();
-  const { site_id, name, email, phone, message, source, metadata } = body;
-
-  // Validation - نجمع كل الأخطاء مرة واحدة
-  const validationErrors: Record<string, string> = {};
-
-  if (!site_id) {
-    validationErrors.site_id = "Site ID is required.";
-  }
-
-  if (!email && !name && !metadata) {
-    validationErrors.general = "At least one field (name, email) is required.";
-  }
-
-  if (email) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      validationErrors.email = "Please enter a valid email address.";
-    }
-  }
-
-  if (Object.keys(validationErrors).length > 0) {
-    throw new ValidationError(validationErrors);
-  }
-
-  const supabase = await createClient();
+  const { supabase, user } = await requireUser();
+  const validated = await validateJson(req, createLeadSchema);
 
   const { data: site, error: siteError } = await supabase
     .from("sites")
-    .select("user_id")
-    .eq("id", site_id)
+    .select("id")
+    .eq("id", validated.site_id)
+    .eq("user_id", user.id)
     .single();
 
   if (siteError || !site) {
@@ -53,14 +82,15 @@ export const POST = withApiHandler(async (req: NextRequest) => {
   const { data, error } = await supabase
     .from("leads")
     .insert({
-      site_id,
-      user_id: site.user_id,
-      name: name?.trim() || null,
-      email: email?.trim()?.toLowerCase() || "no-email@form.submission",
-      phone: phone?.trim() || null,
-      message: message?.trim() || null,
-      source: source || "custom_form",
-      metadata: metadata || {},
+      user_id: user.id,
+      site_id: validated.site_id,
+      name: validated.name ?? null,
+      email: validated.email ?? null,
+      phone: validated.phone ?? null,
+      message: validated.message ?? null,
+      source: validated.source ?? null,
+      metadata: validated.metadata ?? null,
+      status: "new",
     })
     .select()
     .single();
@@ -68,56 +98,4 @@ export const POST = withApiHandler(async (req: NextRequest) => {
   if (error) throw normalizeSupabaseError(error);
 
   return createdResponse(data);
-});
-
-export const GET = withApiHandler(async (req: NextRequest) => {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) throw new UnauthorizedError();
-
-  const { searchParams } = new URL(req.url);
-  const status = searchParams.get("status");
-  const siteId = searchParams.get("site_id");
-  const search = searchParams.get("search");
-  const dateFrom = searchParams.get("date_from");
-  const dateTo = searchParams.get("date_to");
-  const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-  const limit = Math.min(
-    100,
-    Math.max(1, parseInt(searchParams.get("limit") || "20")),
-  );
-  const offset = (page - 1) * limit;
-
-  let query = supabase
-    .from("leads")
-    .select("*", { count: "exact" })
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .range(offset, offset + limit - 1);
-
-  if (status && status !== "all") query = query.eq("status", status);
-  if (siteId && siteId !== "all") query = query.eq("site_id", siteId);
-  if (dateFrom) query = query.gte("created_at", dateFrom);
-  if (dateTo) query = query.lte("created_at", dateTo);
-  if (search) {
-    query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%`);
-  }
-
-  const { data, error, count } = await query;
-
-  if (error) throw normalizeSupabaseError(error);
-
-  return successResponse({
-    leads: data,
-    pagination: {
-      page,
-      limit,
-      total: count ?? 0,
-      pages: Math.ceil((count ?? 0) / limit),
-    },
-  });
 });

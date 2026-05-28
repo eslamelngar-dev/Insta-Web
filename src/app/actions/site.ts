@@ -1,16 +1,17 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { createClient } from "@/lib/supabase-server";
 import { logger } from "@/lib/logger";
 import { AppError, ErrorCode } from "@/lib/errors";
+import { siteIdSchema } from "@/lib/validations";
 import type { SiteContent } from "@/types";
 
-// ===== Action Result Type =====
 export type ActionResult<T = void> =
   | { success: true; data: T }
   | { success: false; error: string; code: string };
 
-// ===== Helper =====
 function actionError(error: unknown): ActionResult<never> {
   if (error instanceof AppError) {
     return {
@@ -34,7 +35,6 @@ function actionError(error: unknown): ActionResult<never> {
   };
 }
 
-// ===== Storage Path Extractor =====
 const extractStoragePaths = (content: SiteContent | null): string[] => {
   if (!content) return [];
   const paths: string[] = [];
@@ -50,23 +50,23 @@ const extractStoragePaths = (content: SiteContent | null): string[] => {
 
   extractPath(content.cover_url);
   extractPath(content.avatar_url);
-  content.portfolio?.forEach((p) => extractPath(p.image));
-  content.blocks?.forEach((b) => {
-    extractPath(b.data?.image_url);
-    extractPath(b.data?.avatar_url);
+  content.portfolio?.forEach((item) => extractPath(item.image));
+  content.blocks?.forEach((block) => {
+    extractPath(block.data?.image_url);
+    extractPath(block.data?.avatar_url);
   });
 
   return paths;
 };
 
-// ===== Delete Site Action =====
 export async function deleteSiteAction(
   siteId: string,
-  userId: string,
+  _userId?: string,
 ): Promise<ActionResult<{ deleted: boolean }>> {
   try {
-    // Input validation
-    if (!siteId || !userId) {
+    const parsedSiteId = siteIdSchema.safeParse(siteId);
+
+    if (!parsedSiteId.success) {
       return {
         success: false,
         error: "Invalid request.",
@@ -74,11 +74,25 @@ export async function deleteSiteAction(
       };
     }
 
-    const { data: site, error: fetchError } = await supabaseAdmin
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return {
+        success: false,
+        error: "Please sign in to continue.",
+        code: ErrorCode.UNAUTHORIZED,
+      };
+    }
+
+    const { data: site, error: fetchError } = await supabase
       .from("sites")
-      .select("content")
-      .eq("id", siteId)
-      .eq("user_id", userId)
+      .select("id, username, content")
+      .eq("id", parsedSiteId.data)
+      .eq("user_id", user.id)
       .single();
 
     if (fetchError || !site) {
@@ -89,17 +103,16 @@ export async function deleteSiteAction(
       };
     }
 
-    // Delete storage files (non-blocking - don't fail if storage fails)
     const filesToDelete = extractStoragePaths(site.content as SiteContent);
+
     if (filesToDelete.length > 0) {
       const { error: storageError } = await supabaseAdmin.storage
         .from("avatars")
         .remove(filesToDelete);
 
       if (storageError) {
-        // نسجل الخطأ لكن ما نوقف العملية
         logger.warn("Failed to delete site storage files", {
-          siteId,
+          siteId: parsedSiteId.data,
           files: filesToDelete,
           error: storageError.message,
         });
@@ -109,14 +122,15 @@ export async function deleteSiteAction(
     const { error: deleteError } = await supabaseAdmin
       .from("sites")
       .delete()
-      .eq("id", siteId)
-      .eq("user_id", userId);
+      .eq("id", parsedSiteId.data)
+      .eq("user_id", user.id);
 
     if (deleteError) {
       logger.error("Failed to delete site record", {
-        siteId,
+        siteId: parsedSiteId.data,
         error: deleteError.message,
       });
+
       return {
         success: false,
         error: "Failed to delete site. Please try again.",
@@ -124,7 +138,15 @@ export async function deleteSiteAction(
       };
     }
 
-    logger.info("Site deleted successfully", { siteId, userId });
+    revalidatePath("/dashboard");
+    if (site.username) {
+      revalidatePath(`/${site.username}`);
+    }
+
+    logger.info("Site deleted successfully", {
+      siteId: parsedSiteId.data,
+      userId: user.id,
+    });
 
     return { success: true, data: { deleted: true } };
   } catch (error) {

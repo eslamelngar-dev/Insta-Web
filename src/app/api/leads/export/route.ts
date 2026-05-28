@@ -1,22 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase-server";
-import { withApiHandler, errorResponse } from "@/lib/api-response";
-import { UnauthorizedError, normalizeSupabaseError } from "@/lib/errors";
+import { withApiHandler } from "@/lib/api-response";
+import { requireUser } from "@/lib/auth";
+import { normalizeSupabaseError } from "@/lib/errors";
+import { validateQuery } from "@/lib/validate";
+import { exportQuerySchema } from "@/lib/validations";
 
-// Export مش بيرجع JSON، فبنعامله بشكل خاص
+type LeadExportRow = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  message: string | null;
+  status: string;
+  source: string | null;
+  created_at: string;
+};
+
+function toCsvCell(value: unknown) {
+  const stringValue = value == null ? "" : String(value);
+  return `"${stringValue.replace(/"/g, '""')}"`;
+}
+
 export const GET = withApiHandler(async (req: NextRequest) => {
-  const supabase = await createClient();
+  const { supabase, user } = await requireUser();
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) throw new UnauthorizedError();
-
-  const { searchParams } = new URL(req.url);
-  const siteId = searchParams.get("site_id");
-  const status = searchParams.get("status");
+  const validated = validateQuery(exportQuerySchema, req.nextUrl.searchParams);
 
   let query = supabase
     .from("leads")
@@ -24,12 +32,19 @@ export const GET = withApiHandler(async (req: NextRequest) => {
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
-  if (siteId && siteId !== "all") query = query.eq("site_id", siteId);
-  if (status && status !== "all") query = query.eq("status", status);
+  if (validated.site_id && validated.site_id !== "all") {
+    query = query.eq("site_id", validated.site_id);
+  }
+
+  if (validated.status && validated.status !== "all") {
+    query = query.eq("status", validated.status);
+  }
 
   const { data, error } = await query;
 
-  if (error) throw normalizeSupabaseError(error);
+  if (error) {
+    throw normalizeSupabaseError(error);
+  }
 
   const headers = [
     "ID",
@@ -42,26 +57,25 @@ export const GET = withApiHandler(async (req: NextRequest) => {
     "Date",
   ];
 
-  const rows = (data ?? []).map((lead) => [
-    lead.id,
-    lead.name ?? "",
-    lead.email,
-    lead.phone ?? "",
-    // Escape quotes in CSV properly
-    `"${(lead.message ?? "").replace(/"/g, '""')}"`,
-    lead.status,
-    lead.source,
-    new Date(lead.created_at).toLocaleDateString("en-US"),
-  ]);
-
-  const csv = [headers.join(","), ...rows.map((row) => row.join(","))].join(
-    "\n",
+  const rows = (data ?? []).map((lead: LeadExportRow) =>
+    [
+      lead.id,
+      lead.name,
+      lead.email,
+      lead.phone,
+      lead.message,
+      lead.status,
+      lead.source,
+      new Date(lead.created_at).toISOString(),
+    ].map(toCsvCell),
   );
 
-  // BOM للـ Excel compatibility
-  const bom = "\uFEFF";
+  const csv = [
+    headers.map(toCsvCell).join(","),
+    ...rows.map((row: string[]) => row.join(",")),
+  ].join("\n");
 
-  return new NextResponse(bom + csv, {
+  return new NextResponse(`\uFEFF${csv}`, {
     status: 200,
     headers: {
       "Content-Type": "text/csv; charset=utf-8",

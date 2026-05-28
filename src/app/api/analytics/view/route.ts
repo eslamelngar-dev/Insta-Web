@@ -1,20 +1,27 @@
 import { NextRequest } from "next/server";
 import { withApiHandler, successResponse } from "@/lib/api-response";
-import { ValidationError, normalizeSupabaseError } from "@/lib/errors";
+import { NotFoundError, normalizeSupabaseError } from "@/lib/errors";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { validateJson } from "@/lib/validate";
+import { trackViewSchema } from "@/lib/validations";
 
-// Analytics endpoint - public (no auth needed)
-// بنستخدم admin client لأنه مش محتاج auth
 export const POST = withApiHandler(async (req: NextRequest) => {
-  const { site_id } = await req.json();
+  const validated = await validateJson(req, trackViewSchema);
 
-  if (!site_id) {
-    throw new ValidationError({ site_id: "Site ID is required." });
+  const { data: site, error: siteError } = await supabaseAdmin
+    .from("sites")
+    .select("id")
+    .eq("id", validated.site_id)
+    .eq("published", true)
+    .single();
+
+  if (siteError || !site) {
+    throw new NotFoundError("site");
   }
 
   const { error } = await supabaseAdmin
     .from("page_views")
-    .insert([{ site_id }]);
+    .insert([{ site_id: validated.site_id }]);
 
   if (error) throw normalizeSupabaseError(error);
 

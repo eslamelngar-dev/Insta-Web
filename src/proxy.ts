@@ -1,5 +1,5 @@
-import { createServerClient } from '@supabase/ssr';
-import { NextResponse, type NextRequest } from 'next/server';
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -15,29 +15,47 @@ export async function proxy(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value),
+          );
+
           supabaseResponse = NextResponse.next({
             request,
           });
+
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, options),
           );
         },
       },
-    }
+    },
   );
 
   const {
     data: { user },
+    error,
   } = await supabase.auth.getUser();
 
-  if (request.nextUrl.pathname.startsWith('/dashboard') && !user) {
-    return NextResponse.redirect(new URL('/login', request.url));
+  const pathname = request.nextUrl.pathname;
+  const fullPath = `${pathname}${request.nextUrl.search}`;
+
+  if (pathname.startsWith("/dashboard") && (!user || error)) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("redirectTo", fullPath);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  if (
+    user &&
+    !error &&
+    (pathname.startsWith("/login") || pathname.startsWith("/register"))
+  ) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   return supabaseResponse;
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*'],
+  matcher: ["/dashboard/:path*", "/login", "/register"],
 };
