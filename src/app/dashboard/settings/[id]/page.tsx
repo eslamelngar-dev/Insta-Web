@@ -20,14 +20,18 @@ import {
   AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
-import { deleteSiteAction } from "@/app/actions/site";
+import {
+  deleteSiteAction,
+  togglePublishAction,
+  updateSiteSettingsAction,
+} from "@/app/actions/site";
 
 interface Site {
   id: string;
   title: string;
   username: string;
   is_published: boolean;
-  user_id?: string;
+  account_id: string;
 }
 
 export default function SiteSettings({
@@ -42,7 +46,7 @@ export default function SiteSettings({
   const [site, setSite] = useState<Site | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [userPlan, setUserPlan] = useState<string>("free");
+  const [togglingPublish, setTogglingPublish] = useState(false);
 
   const [title, setTitle] = useState("");
   const [username, setUsername] = useState("");
@@ -60,7 +64,7 @@ export default function SiteSettings({
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
   useEffect(() => {
-    const fetchSiteAndUser = async () => {
+    const fetchSiteAndAccount = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -70,21 +74,25 @@ export default function SiteSettings({
         return;
       }
 
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("plan")
-        .eq("id", user.id)
-        .single();
+      const { data: membership } = await supabase
+        .from("account_members")
+        .select("account_id")
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
 
-      if (profileData && profileData.plan) {
-        setUserPlan(profileData.plan);
+      if (!membership) {
+        router.push("/dashboard");
+        return;
       }
 
       const { data: siteData, error } = await supabase
         .from("sites")
-        .select("*")
+        .select("id, title, username, is_published, account_id")
         .eq("id", siteId)
-        .eq("user_id", user.id)
+        .eq("account_id", membership.account_id)
         .single();
 
       if (error || !siteData) {
@@ -93,18 +101,17 @@ export default function SiteSettings({
         return;
       }
 
-      setSite({ ...siteData, user_id: user.id });
+      setSite(siteData);
       setTitle(siteData.title);
       setUsername(siteData.username);
       setLoading(false);
     };
 
-    fetchSiteAndUser();
+    fetchSiteAndAccount();
   }, [siteId, router]);
 
   useEffect(() => {
     if (!username || username.trim() === "") {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setUsernameStatus("idle");
       return;
     }
@@ -131,7 +138,11 @@ export default function SiteSettings({
         "app",
         "auth",
         "home",
+        "analytics",
+        "leads",
+        "domains",
       ];
+
       if (reservedWords.includes(cleanUsername)) {
         setUsernameStatus("taken");
         return;
@@ -150,6 +161,7 @@ export default function SiteSettings({
     return () => clearTimeout(timer);
   }, [username, siteId]);
 
+  // ✅ بيستخدم Server Action
   const handleUpdateGeneral = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!site) return;
@@ -158,6 +170,7 @@ export default function SiteSettings({
       toast.error("Please choose an available username.");
       return;
     }
+
     if (effectiveUsernameStatus === "checking") {
       toast.error("Please wait while we check username availability.");
       return;
@@ -166,92 +179,76 @@ export default function SiteSettings({
     setSaving(true);
 
     try {
-      if (title.trim().length < 2) {
-        throw new Error("Site title must be at least 2 characters long.");
-      }
+      const result = await updateSiteSettingsAction(site.id, {
+        title,
+        username,
+      });
 
-      const cleanUsername = username.toLowerCase().trim();
-
-      if (cleanUsername.length < 3 || cleanUsername.length > 30) {
-        throw new Error("Username must be between 3 and 30 characters.");
-      }
-
-      const usernameRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
-      if (!usernameRegex.test(cleanUsername)) {
-        throw new Error(
-          "Username can only contain lowercase letters, numbers, and hyphens, and cannot start or end with a hyphen.",
-        );
-      }
-
-      const { error } = await supabase
-        .from("sites")
-        .update({ title, username: cleanUsername })
-        .eq("id", site.id);
-
-      if (error) {
-        if (error.code === "23505") {
-          throw new Error("This username is already taken.");
-        }
-        throw error;
+      if (!result.success) {
+        toast.error(result.error);
+        return;
       }
 
       toast.success("Settings updated successfully");
-      setSite({ ...site, title, username: cleanUsername });
-      setUsername(cleanUsername);
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        toast.error(error.message);
-      }
+      setSite({
+        ...site,
+        title: result.data.title,
+        username: result.data.username,
+      });
+      setUsername(result.data.username);
     } finally {
       setSaving(false);
     }
   };
 
+  // ✅ بيستخدم Server Action مع plan check حقيقي
   const handleTogglePublish = async () => {
     if (!site) return;
 
-    if (site.is_published && userPlan !== "pro" && userPlan !== "business") {
-      setIsUpgradeModalOpen(true);
-      return;
-    }
-
-    const newStatus = !site.is_published;
-    setSite({ ...site, is_published: newStatus });
+    setTogglingPublish(true);
 
     try {
-      const { error } = await supabase
-        .from("sites")
-        .update({ is_published: newStatus })
-        .eq("id", site.id);
+      const newStatus = !site.is_published;
+      const result = await togglePublishAction(site.id, newStatus);
 
-      if (error) throw error;
-      toast.success(
-        newStatus ? "Site published and is now live." : "Site taken offline.",
-      );
-    } catch (error: unknown) {
-      setSite({ ...site, is_published: !newStatus });
-      if (error instanceof Error) {
-        toast.error(error.message);
+      if (!result.success) {
+        if (result.code === "UPGRADE_REQUIRED") {
+          setIsUpgradeModalOpen(true);
+        } else {
+          toast.error(result.error);
+        }
+        return;
       }
+
+      setSite({ ...site, is_published: result.data.is_published });
+      toast.success(
+        result.data.is_published
+          ? "Site published and is now live."
+          : "Site taken offline.",
+      );
+    } finally {
+      setTogglingPublish(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!site || confirmName !== site.title || !site.user_id) return;
+    if (!site || confirmName !== site.title) return;
+
     setIsDeleting(true);
+
     try {
-      const result = await deleteSiteAction(site.id, site.user_id);
+      const result = await deleteSiteAction(site.id);
+
       if (!result.success) {
-        throw new Error(result.error);
+        toast.error(result.error);
+        setIsDeleting(false);
+        return;
       }
+
       toast.success("Site and all associated files deleted successfully");
       router.push("/dashboard");
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        toast.error(error.message);
-      } else {
-        toast.error("An unexpected error occurred");
-      }
+    } catch {
+      toast.error("An unexpected error occurred");
       setIsDeleting(false);
     }
   };
@@ -288,6 +285,7 @@ export default function SiteSettings({
         </header>
 
         <div className="space-y-8">
+          {/* General Settings */}
           <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl p-6 sm:p-8 shadow-sm">
             <div className="mb-6 border-b border-slate-100 dark:border-white/5 pb-4">
               <h2 className="text-xl font-black uppercase tracking-tight mb-1">
@@ -389,6 +387,7 @@ export default function SiteSettings({
             </form>
           </section>
 
+          {/* Visibility */}
           <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl p-6 sm:p-8 shadow-sm">
             <div className="mb-6 border-b border-slate-100 dark:border-white/5 pb-4">
               <h2 className="text-xl font-black uppercase tracking-tight mb-1 flex items-center gap-2">
@@ -423,18 +422,24 @@ export default function SiteSettings({
 
               <button
                 onClick={handleTogglePublish}
-                className={`shrink-0 flex items-center gap-2 px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
+                disabled={togglingPublish}
+                className={`shrink-0 flex items-center gap-2 px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                   site.is_published
                     ? "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700"
                     : "bg-green-500 text-white hover:bg-green-400 shadow-lg shadow-green-500/20"
                 }`}
               >
-                <Power size={14} />
+                {togglingPublish ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Power size={14} />
+                )}
                 {site.is_published ? "Take Offline" : "Publish Site"}
               </button>
             </div>
           </section>
 
+          {/* Danger Zone */}
           <section className="bg-red-50 dark:bg-red-500/5 border border-red-200 dark:border-red-500/20 rounded-3xl p-6 sm:p-8">
             <div className="mb-6 border-b border-red-200 dark:border-red-500/20 pb-4">
               <h2 className="text-xl font-black uppercase tracking-tight mb-1 text-red-600 flex items-center gap-2">
@@ -467,9 +472,10 @@ export default function SiteSettings({
         </div>
       </div>
 
+      {/* Upgrade Modal */}
       <AnimatePresence>
         {isUpgradeModalOpen && (
-          <div className="fixed inset-0 z-100 flex items-center justify-center p-4 sm:p-6">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -489,15 +495,14 @@ export default function SiteSettings({
               >
                 <X size={24} />
               </button>
-              <div className="w-20 h-20 bg-indigo-500/10 rounded-full flex items-center justify-center text-indigo-500 mx-auto mb-6 shadow-inner shadow-indigo-500/20">
+              <div className="w-20 h-20 bg-indigo-500/10 rounded-full flex items-center justify-center text-indigo-500 mx-auto mb-6">
                 <Lock size={32} />
               </div>
               <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-3 uppercase tracking-tight">
                 Pro Feature
               </h2>
               <p className="text-slate-500 dark:text-slate-400 mb-8 text-sm sm:text-base font-medium leading-relaxed">
-                Taking a site offline (Maintenance Mode) after it has been
-                published is available exclusively on the{" "}
+                Taking a site offline after publishing requires the{" "}
                 <span className="font-bold text-indigo-500">Pro Plan</span>.
               </p>
               <Link
@@ -511,9 +516,10 @@ export default function SiteSettings({
         )}
       </AnimatePresence>
 
+      {/* Delete Modal */}
       <AnimatePresence>
         {isDeleteModalOpen && (
-          <div className="fixed inset-0 z-100 flex items-center justify-center p-4 sm:p-6">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

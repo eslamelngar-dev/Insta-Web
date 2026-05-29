@@ -5,12 +5,12 @@ import {
   createdResponse,
 } from "@/lib/api-response";
 import { NotFoundError, normalizeSupabaseError } from "@/lib/errors";
-import { requireUser } from "@/lib/auth";
+import { requireAccount } from "@/lib/account";
 import { validateJson, validateQuery } from "@/lib/validate";
 import { createLeadSchema, leadsQuerySchema } from "@/lib/validations";
 
 export const GET = withApiHandler(async (req: NextRequest) => {
-  const { supabase, user } = await requireUser();
+  const { supabase, account } = await requireAccount();
 
   const query = validateQuery(leadsQuerySchema, req.nextUrl.searchParams);
 
@@ -20,7 +20,7 @@ export const GET = withApiHandler(async (req: NextRequest) => {
   let dbQuery = supabase
     .from("leads")
     .select("*", { count: "exact" })
-    .eq("user_id", user.id)
+    .eq("account_id", account.id)
     .order("created_at", { ascending: false })
     .range(from, to);
 
@@ -65,14 +65,14 @@ export const GET = withApiHandler(async (req: NextRequest) => {
 });
 
 export const POST = withApiHandler(async (req: NextRequest) => {
-  const { supabase, user } = await requireUser();
+  const { supabase, account } = await requireAccount();
   const validated = await validateJson(req, createLeadSchema);
 
   const { data: site, error: siteError } = await supabase
     .from("sites")
     .select("id")
     .eq("id", validated.site_id)
-    .eq("user_id", user.id)
+    .eq("account_id", account.id)
     .single();
 
   if (siteError || !site) {
@@ -82,7 +82,7 @@ export const POST = withApiHandler(async (req: NextRequest) => {
   const { data, error } = await supabase
     .from("leads")
     .insert({
-      user_id: user.id,
+      account_id: account.id,
       site_id: validated.site_id,
       name: validated.name ?? null,
       email: validated.email ?? null,

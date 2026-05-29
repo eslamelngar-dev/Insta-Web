@@ -5,7 +5,7 @@ import {
   type RouteContext,
 } from "@/lib/api-response";
 import { NotFoundError, normalizeSupabaseError } from "@/lib/errors";
-import { requireUser } from "@/lib/auth";
+import { requireAccount } from "@/lib/account";
 import { validate, validateJson } from "@/lib/validate";
 import { leadParamsSchema, updateLeadSchema } from "@/lib/validations";
 
@@ -13,13 +13,13 @@ type Context = RouteContext<{ id: string }>;
 
 export const GET = withApiHandler(async (_req: NextRequest, ctx: Context) => {
   const { id } = validate(leadParamsSchema, await ctx.params);
-  const { supabase, user } = await requireUser();
+  const { supabase, account } = await requireAccount();
 
   const { data: lead, error: leadError } = await supabase
     .from("leads")
     .select("*")
     .eq("id", id)
-    .eq("user_id", user.id)
+    .eq("account_id", account.id)
     .single();
 
   if (leadError || !lead) {
@@ -41,7 +41,7 @@ export const GET = withApiHandler(async (_req: NextRequest, ctx: Context) => {
 
 export const PATCH = withApiHandler(async (req: NextRequest, ctx: Context) => {
   const { id } = validate(leadParamsSchema, await ctx.params);
-  const { supabase, user } = await requireUser();
+  const { supabase, account } = await requireAccount();
   const validated = await validateJson(req, updateLeadSchema);
 
   const updates: Record<string, unknown> = {};
@@ -56,7 +56,7 @@ export const PATCH = withApiHandler(async (req: NextRequest, ctx: Context) => {
     .from("leads")
     .update(updates)
     .eq("id", id)
-    .eq("user_id", user.id)
+    .eq("account_id", account.id)
     .select()
     .single();
 
@@ -78,13 +78,13 @@ export const PATCH = withApiHandler(async (req: NextRequest, ctx: Context) => {
 export const DELETE = withApiHandler(
   async (_req: NextRequest, ctx: Context) => {
     const { id } = validate(leadParamsSchema, await ctx.params);
-    const { supabase, user } = await requireUser();
+    const { supabase, account } = await requireAccount();
 
     const { data, error } = await supabase
       .from("leads")
       .delete()
       .eq("id", id)
-      .eq("user_id", user.id)
+      .eq("account_id", account.id)
       .select("id")
       .single();
 

@@ -1,16 +1,21 @@
-export type LeadStatus = "new" | "contacted" | "qualified" | "converted" | "archived";
+export type LeadStatus =
+  | "new"
+  | "contacted"
+  | "qualified"
+  | "converted"
+  | "archived";
 
 export interface Lead {
   id: string;
+  account_id: string;
   site_id: string;
-  user_id: string;
   name: string | null;
-  email: string;
+  email: string | null;
   phone: string | null;
   message: string | null;
-  source: string;
+  source: string | null;
   status: LeadStatus;
-  metadata: Record<string, unknown>;
+  metadata: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }
@@ -18,6 +23,7 @@ export interface Lead {
 export interface LeadNote {
   id: string;
   lead_id: string;
+  account_id: string;
   user_id: string;
   content: string;
   created_at: string;
@@ -44,7 +50,7 @@ export interface LeadsStats {
 export interface CreateLeadPayload {
   site_id: string;
   name?: string;
-  email: string;
+  email?: string;
   phone?: string;
   message?: string;
   source?: string;

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withApiHandler } from "@/lib/api-response";
-import { requireUser } from "@/lib/auth";
+import { requireAccount } from "@/lib/account";
+import { requireAccountPlan } from "@/lib/plan";
 import { normalizeSupabaseError } from "@/lib/errors";
 import { validateQuery } from "@/lib/validate";
 import { exportQuerySchema } from "@/lib/validations";
@@ -22,14 +23,15 @@ function toCsvCell(value: unknown) {
 }
 
 export const GET = withApiHandler(async (req: NextRequest) => {
-  const { supabase, user } = await requireUser();
+  const { supabase, account } = await requireAccount();
+  await requireAccountPlan(supabase, account.id, ["pro", "business"]);
 
   const validated = validateQuery(exportQuerySchema, req.nextUrl.searchParams);
 
   let query = supabase
     .from("leads")
     .select("id, name, email, phone, message, status, source, created_at")
-    .eq("user_id", user.id)
+    .eq("account_id", account.id)
     .order("created_at", { ascending: false });
 
   if (validated.site_id && validated.site_id !== "all") {
@@ -42,9 +44,7 @@ export const GET = withApiHandler(async (req: NextRequest) => {
 
   const { data, error } = await query;
 
-  if (error) {
-    throw normalizeSupabaseError(error);
-  }
+  if (error) throw normalizeSupabaseError(error);
 
   const headers = [
     "ID",

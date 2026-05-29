@@ -16,8 +16,10 @@ import {
   Inbox,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 const MENU_ITEMS = [
   { icon: LayoutDashboard, label: "My Sites", href: "/dashboard" },
@@ -30,14 +32,18 @@ const MENU_ITEMS = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   useEffect(() => setMounted(true), []);
+
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
+
   useEffect(() => {
     document.body.style.overflow = mobileOpen ? "hidden" : "";
     return () => {
@@ -47,6 +53,20 @@ export default function Sidebar() {
 
   const isActive = (href: string) =>
     href === "/dashboard" ? pathname === href : pathname.startsWith(href);
+
+  const handleSignOut = async () => {
+    if (isSigningOut) return;
+    setIsSigningOut(true);
+
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      router.push("/login");
+    } catch {
+      toast.error("Failed to sign out. Please try again.");
+      setIsSigningOut(false);
+    }
+  };
 
   const sidebarContent = (
     <>
@@ -110,16 +130,24 @@ export default function Sidebar() {
               Early Access Free
             </p>
           </div>
-          <button className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/20">
+          <Link
+            href="/dashboard/billing"
+            className="block w-full py-2.5 bg-indigo-600 text-white rounded-xl text-center text-[10px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/20"
+          >
             Upgrade to Pro
-          </button>
+          </Link>
         </div>
-        <button className="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-all text-xs font-black uppercase tracking-widest w-full text-left group">
+
+        <button
+          onClick={handleSignOut}
+          disabled={isSigningOut}
+          className="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-all text-xs font-black uppercase tracking-widest w-full text-left group disabled:opacity-50"
+        >
           <LogOut
             size={18}
             className="group-hover:-translate-x-1 transition-transform"
           />
-          Sign Out
+          {isSigningOut ? "Signing Out..." : "Sign Out"}
         </button>
       </div>
     </>

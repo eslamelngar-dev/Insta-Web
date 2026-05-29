@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   Globe,
   Mail,
@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { TEMPLATES_REGISTRY } from "@/lib/templates-registry";
 import { SiteData } from "@/types";
-import { supabase } from "@/lib/supabase";
 
 type IconProps = React.SVGProps<SVGSVGElement>;
 
@@ -74,25 +73,23 @@ interface SiteRendererProps {
 export default function SiteRenderer({ site, templateId }: SiteRendererProps) {
   const content = site.content || (site as unknown as SiteData["content"]);
   const isDark = content?.theme_mode === "dark";
+  const hasTracked = useRef(false);
 
   const TemplateConfig =
     TEMPLATES_REGISTRY[templateId] || TEMPLATES_REGISTRY.classic;
   const TemplateComponent = TemplateConfig.component;
 
   useEffect(() => {
-    const trackVisit = async () => {
-      if (
-        typeof window === "undefined" ||
-        window.location.pathname.startsWith("/dashboard")
-      ) {
-        return;
-      }
+    if (hasTracked.current) return;
 
+    const trackVisit = async () => {
+      if (typeof window === "undefined") return;
+      if (window.location.pathname.startsWith("/dashboard")) return;
       if (!site.id) return;
 
-      try {
-        console.log("Analytics: Starting tracking for site:", site.id);
+      hasTracked.current = true;
 
+      try {
         let visitorId = localStorage.getItem("visitor_id");
         if (!visitorId) {
           visitorId = crypto.randomUUID();
@@ -107,21 +104,17 @@ export default function SiteRenderer({ site, templateId }: SiteRendererProps) {
         const referrer = document.referrer
           ? new URL(document.referrer).hostname
           : "Direct";
-
-        const { error } = await supabase.from("page_views").insert({
-          site_id: site.id,
-          visitor_id: visitorId,
-          device,
-          referrer,
+        await fetch("/api/analytics/view", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            site_id: site.id,
+            visitor_id: visitorId,
+            device,
+            referrer,
+          }),
         });
-
-        if (error) {
-          console.error("Analytics Error (Supabase):", error.message);
-        } else {
-          console.log("Analytics Success! Visit recorded.");
-        }
-      } catch (err) {
-        console.error("Analytics Critical Error:", err);
+      } catch {
       }
     };
 

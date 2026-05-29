@@ -35,6 +35,22 @@ function actionError(error: unknown): ActionResult<never> {
   };
 }
 
+// ✅ Helper مشترك عشان نجيب الـ membership
+async function getActiveMembership(userId: string) {
+  const supabase = await createClient();
+
+  const { data: membership } = await supabase
+    .from("account_members")
+    .select("account_id, role")
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  return membership;
+}
+
 const extractStoragePaths = (content: SiteContent | null): string[] => {
   if (!content) return [];
   const paths: string[] = [];
@@ -59,9 +75,35 @@ const extractStoragePaths = (content: SiteContent | null): string[] => {
   return paths;
 };
 
+// ✅ Reserved usernames
+const RESERVED_USERNAMES = [
+  "admin",
+  "dashboard",
+  "api",
+  "login",
+  "register",
+  "settings",
+  "billing",
+  "templates",
+  "editor",
+  "support",
+  "help",
+  "root",
+  "instaweb",
+  "www",
+  "app",
+  "auth",
+  "home",
+  "analytics",
+  "leads",
+  "domains",
+];
+
+// ============================================================
+// deleteSiteAction
+// ============================================================
 export async function deleteSiteAction(
   siteId: string,
-  _userId?: string,
 ): Promise<ActionResult<{ deleted: boolean }>> {
   try {
     const parsedSiteId = siteIdSchema.safeParse(siteId);
@@ -88,11 +130,30 @@ export async function deleteSiteAction(
       };
     }
 
+    const membership = await getActiveMembership(user.id);
+
+    if (!membership) {
+      return {
+        success: false,
+        error: "No active workspace found.",
+        code: ErrorCode.FORBIDDEN,
+      };
+    }
+
+    // ✅ فقط owner و admin يقدروا يمسحوا
+    if (!["owner", "admin"].includes(membership.role)) {
+      return {
+        success: false,
+        error: "You don't have permission to delete sites.",
+        code: ErrorCode.FORBIDDEN,
+      };
+    }
+
     const { data: site, error: fetchError } = await supabase
       .from("sites")
       .select("id, username, content")
       .eq("id", parsedSiteId.data)
-      .eq("user_id", user.id)
+      .eq("account_id", membership.account_id)
       .single();
 
     if (fetchError || !site) {
@@ -123,7 +184,7 @@ export async function deleteSiteAction(
       .from("sites")
       .delete()
       .eq("id", parsedSiteId.data)
-      .eq("user_id", user.id);
+      .eq("account_id", membership.account_id);
 
     if (deleteError) {
       logger.error("Failed to delete site record", {
@@ -146,9 +207,236 @@ export async function deleteSiteAction(
     logger.info("Site deleted successfully", {
       siteId: parsedSiteId.data,
       userId: user.id,
+      accountId: membership.account_id,
     });
 
     return { success: true, data: { deleted: true } };
+  } catch (error) {
+    return actionError(error);
+  }
+}
+
+// ============================================================
+// togglePublishAction ✅ جديد
+// ============================================================
+export async function togglePublishAction(
+  siteId: string,
+  publish: boolean,
+): Promise<ActionResult<{ is_published: boolean }>> {
+  try {
+    const parsedSiteId = siteIdSchema.safeParse(siteId);
+
+    if (!parsedSiteId.success) {
+      return {
+        success: false,
+        error: "Invalid request.",
+        code: ErrorCode.INVALID_INPUT,
+      };
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return {
+        success: false,
+        error: "Please sign in to continue.",
+        code: ErrorCode.UNAUTHORIZED,
+      };
+    }
+
+    const membership = await getActiveMembership(user.id);
+
+    if (!membership) {
+      return {
+        success: false,
+        error: "No active workspace found.",
+        code: ErrorCode.FORBIDDEN,
+      };
+    }
+
+    if (!["owner", "admin", "editor"].includes(membership.role)) {
+      return {
+        success: false,
+        error: "You don't have permission to change publish status.",
+        code: ErrorCode.FORBIDDEN,
+      };
+    }
+
+    // ✅ لو بيعمل unpublish - لازم plan مدفوع
+    if (!publish) {
+      const { data: account } = await supabase
+        .from("accounts")
+        .select("plan, trial_ends_at")
+        .eq("id", membership.account_id)
+        .single();
+
+      if (account) {
+        const isTrialActive =
+          account.trial_ends_at && new Date(account.trial_ends_at) > new Date();
+
+        if (account.plan === "free" && !isTrialActive) {
+          return {
+            success: false,
+            error: "Taking a site offline requires the Pro plan.",
+            code: ErrorCode.UPGRADE_REQUIRED,
+          };
+        }
+      }
+    }
+
+    const { error: updateError } = await supabase
+      .from("sites")
+      .update({ is_published: publish })
+      .eq("id", parsedSiteId.data)
+      .eq("account_id", membership.account_id);
+
+    if (updateError) {
+      return {
+        success: false,
+        error: "Failed to update site. Please try again.",
+        code: ErrorCode.DATABASE_ERROR,
+      };
+    }
+
+    revalidatePath("/dashboard");
+    revalidatePath(`/dashboard/settings/${parsedSiteId.data}`);
+
+    logger.info("Site publish status changed", {
+      siteId: parsedSiteId.data,
+      userId: user.id,
+      publish,
+    });
+
+    return { success: true, data: { is_published: publish } };
+  } catch (error) {
+    return actionError(error);
+  }
+}
+
+// ============================================================
+// updateSiteSettingsAction ✅ جديد
+// ============================================================
+export async function updateSiteSettingsAction(
+  siteId: string,
+  updates: { title: string; username: string },
+): Promise<ActionResult<{ title: string; username: string }>> {
+  try {
+    const parsedSiteId = siteIdSchema.safeParse(siteId);
+
+    if (!parsedSiteId.success) {
+      return {
+        success: false,
+        error: "Invalid request.",
+        code: ErrorCode.INVALID_INPUT,
+      };
+    }
+
+    // ✅ Validate title
+    const title = updates.title.trim();
+    if (title.length < 2 || title.length > 100) {
+      return {
+        success: false,
+        error: "Site title must be between 2 and 100 characters.",
+        code: ErrorCode.INVALID_INPUT,
+      };
+    }
+
+    // ✅ Validate username
+    const username = updates.username.toLowerCase().trim();
+    const usernameRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
+
+    if (username.length < 3 || username.length > 30) {
+      return {
+        success: false,
+        error: "Username must be between 3 and 30 characters.",
+        code: ErrorCode.INVALID_INPUT,
+      };
+    }
+
+    if (!usernameRegex.test(username)) {
+      return {
+        success: false,
+        error:
+          "Username can only contain lowercase letters, numbers, and hyphens.",
+        code: ErrorCode.INVALID_INPUT,
+      };
+    }
+
+    if (RESERVED_USERNAMES.includes(username)) {
+      return {
+        success: false,
+        error: "This username is reserved.",
+        code: ErrorCode.USERNAME_TAKEN,
+      };
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return {
+        success: false,
+        error: "Please sign in to continue.",
+        code: ErrorCode.UNAUTHORIZED,
+      };
+    }
+
+    const membership = await getActiveMembership(user.id);
+
+    if (!membership) {
+      return {
+        success: false,
+        error: "No active workspace found.",
+        code: ErrorCode.FORBIDDEN,
+      };
+    }
+
+    if (!["owner", "admin", "editor"].includes(membership.role)) {
+      return {
+        success: false,
+        error: "You don't have permission to update site settings.",
+        code: ErrorCode.FORBIDDEN,
+      };
+    }
+
+    const { error: updateError } = await supabase
+      .from("sites")
+      .update({ title, username })
+      .eq("id", parsedSiteId.data)
+      .eq("account_id", membership.account_id);
+
+    if (updateError) {
+      if (updateError.code === "23505") {
+        return {
+          success: false,
+          error: "This username is already taken.",
+          code: ErrorCode.USERNAME_TAKEN,
+        };
+      }
+      return {
+        success: false,
+        error: "Failed to update settings. Please try again.",
+        code: ErrorCode.DATABASE_ERROR,
+      };
+    }
+
+    revalidatePath("/dashboard");
+    revalidatePath(`/dashboard/settings/${parsedSiteId.data}`);
+
+    logger.info("Site settings updated", {
+      siteId: parsedSiteId.data,
+      userId: user.id,
+      username,
+    });
+
+    return { success: true, data: { title, username } };
   } catch (error) {
     return actionError(error);
   }

@@ -1,4 +1,4 @@
-import { UnauthorizedError } from "@/lib/errors";
+import { AppError, ErrorCode } from "@/lib/errors";
 import { createClient } from "@/lib/supabase-server";
 
 export async function requireUser() {
@@ -9,7 +9,7 @@ export async function requireUser() {
   } = await supabase.auth.getUser();
 
   if (error || !user) {
-    throw new UnauthorizedError();
+    throw new AppError({ code: ErrorCode.UNAUTHORIZED });
   }
 
   return { supabase, user };

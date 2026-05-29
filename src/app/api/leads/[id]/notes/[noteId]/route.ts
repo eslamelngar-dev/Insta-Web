@@ -5,7 +5,7 @@ import {
   type RouteContext,
 } from "@/lib/api-response";
 import { NotFoundError, normalizeSupabaseError } from "@/lib/errors";
-import { requireUser } from "@/lib/auth";
+import { requireAccount } from "@/lib/account";
 import { validate } from "@/lib/validate";
 import { leadNoteParamsSchema } from "@/lib/validations";
 
@@ -14,14 +14,14 @@ type Context = RouteContext<{ id: string; noteId: string }>;
 export const DELETE = withApiHandler(
   async (_req: NextRequest, ctx: Context) => {
     const { id, noteId } = validate(leadNoteParamsSchema, await ctx.params);
-    const { supabase, user } = await requireUser();
+    const { supabase, account } = await requireAccount();
 
     const { data, error } = await supabase
       .from("lead_notes")
       .delete()
       .eq("id", noteId)
       .eq("lead_id", id)
-      .eq("user_id", user.id)
+      .eq("account_id", account.id)
       .select("id")
       .single();
 

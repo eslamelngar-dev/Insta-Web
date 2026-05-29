@@ -3,9 +3,9 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { createId } from "@/utils/id";
 import { useRouter } from "next/navigation";
-import type { SiteData, SaveToDatabaseFn, SaveStatus } from "@/types/editor";
-import { FileText, Globe } from "lucide-react";
 import React from "react";
+import { FileText, Globe } from "lucide-react";
+import type { SiteData, SaveToDatabaseFn, SaveStatus } from "@/types/editor";
 
 export function useSaveToDatabase(
   data: SiteData,
@@ -39,6 +39,20 @@ export function useSaveToDatabase(
           return;
         }
 
+        const { data: membership } = await supabase
+          .from("account_members")
+          .select("account_id")
+          .eq("user_id", user.id)
+          .eq("status", "active")
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (!membership) {
+          setSaveStatus("unsaved");
+          return;
+        }
+
         const dbTitle =
           data.content.title ??
           data.content.hero?.title ??
@@ -46,7 +60,7 @@ export function useSaveToDatabase(
           "Untitled Identity";
 
         const payload = {
-          user_id: user.id,
+          account_id: membership.account_id,
           username:
             data.username.toLowerCase().trim() ||
             `user_${createId().slice(0, 8)}`,
@@ -73,6 +87,7 @@ export function useSaveToDatabase(
             .from("sites")
             .update(payload)
             .eq("id", targetId)
+            .eq("account_id", membership.account_id)
             .select()
             .single();
         }
@@ -91,6 +106,7 @@ export function useSaveToDatabase(
           ...prev,
           is_published: publishMode === "publish",
         }));
+
         setSaveStatus("saved");
 
         if (showToast) {

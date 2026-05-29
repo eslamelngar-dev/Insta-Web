@@ -58,7 +58,7 @@ export default function LoginPage() {
           </button>
 
           <div className="relative flex items-center justify-center">
-            <div className="w-full h-[1px] bg-slate-200 dark:bg-white/5"></div>
+            <div className="w-full h-px bg-slate-200 dark:bg-white/5"></div>
             <span className="absolute bg-white dark:bg-slate-950 px-4 text-[10px] text-slate-400 font-black uppercase tracking-widest">Or email</span>
           </div>
 

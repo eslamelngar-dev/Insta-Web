@@ -47,25 +47,44 @@ export function useEditorInit(id: string, templateId: string) {
       if (isInitialized.current) return;
       isInitialized.current = true;
 
-      if (id !== "new") {
-        const { data: site } = await supabase
-          .from("sites")
-          .select("*")
-          .eq("id", id)
-          .single();
+      if (id === "new") return;
 
-        if (site) {
-          reset({
-            username: site.username ?? "",
-            title: site.title ?? "",
-            bio: site.bio ?? "",
-            template_id: site.template_id ?? "classic",
-            content: (site.content as SiteContent) ?? {},
-            is_published: site.is_published ?? false,
-          });
-        }
-        setIsReady(true);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      const { data: membership } = await supabase
+        .from("account_members")
+        .select("account_id")
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (!membership) return;
+
+      const { data: site } = await supabase
+        .from("sites")
+        .select("*")
+        .eq("id", id)
+        .eq("account_id", membership.account_id)
+        .single();
+
+      if (site) {
+        reset({
+          username: site.username ?? "",
+          title: site.title ?? "",
+          bio: site.bio ?? "",
+          template_id: site.template_id ?? "classic",
+          content: (site.content as SiteContent) ?? {},
+          is_published: site.is_published ?? false,
+        });
       }
+
+      setIsReady(true);
     };
 
     init();

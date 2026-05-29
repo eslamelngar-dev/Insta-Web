@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@/lib/errors";
+import { ForbiddenError, AppError, ErrorCode } from "@/lib/errors";
 import { createClient } from "@/lib/supabase-server";
 
 export type Plan = "free" | "pro" | "business";
@@ -10,20 +10,25 @@ function normalizePlan(plan: unknown): Plan {
   return "free";
 }
 
-export async function getEffectivePlan(
+export async function getAccountPlan(
   supabase: ServerSupabase,
-  userId: string,
+  accountId: string,
 ): Promise<Plan> {
-  const { data: profile } = await supabase
-    .from("profiles")
+  const { data, error } = await supabase
+    .from("accounts")
     .select("plan, trial_ends_at")
-    .eq("id", userId)
+    .eq("id", accountId)
     .single();
 
-  const basePlan = normalizePlan(profile?.plan);
-  const trialEndsAt = profile?.trial_ends_at
-    ? new Date(profile.trial_ends_at)
-    : null;
+  if (error || !data) {
+    throw new AppError({
+      code: ErrorCode.NOT_FOUND,
+      message: "Account not found.",
+    });
+  }
+
+  const basePlan = normalizePlan(data.plan);
+  const trialEndsAt = data.trial_ends_at ? new Date(data.trial_ends_at) : null;
 
   if (basePlan === "free" && trialEndsAt && trialEndsAt > new Date()) {
     return "pro";
@@ -32,12 +37,12 @@ export async function getEffectivePlan(
   return basePlan;
 }
 
-export async function requireAnyPlan(
+export async function requireAccountPlan(
   supabase: ServerSupabase,
-  userId: string,
+  accountId: string,
   allowedPlans: Plan[],
 ): Promise<Plan> {
-  const plan = await getEffectivePlan(supabase, userId);
+  const plan = await getAccountPlan(supabase, accountId);
 
   if (!allowedPlans.includes(plan)) {
     throw new ForbiddenError(true);

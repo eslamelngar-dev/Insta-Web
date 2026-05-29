@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
@@ -33,13 +33,11 @@ interface Site {
   primary_color: string;
   created_at: string;
   is_published: boolean;
-  user_id?: string;
 }
 
 export default function Dashboard() {
   const [sites, setSites] = useState<Site[]>([]);
   const [loading, setLoading] = useState(true);
-
   const [origin, setOrigin] = useState("https://instaweb.me");
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -54,19 +52,40 @@ export default function Dashboard() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (user) {
-      const { data } = await supabase
-        .from("sites")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-      if (data) setSites(data.map((d) => ({ ...d, user_id: user.id })));
+
+    if (!user) {
+      setLoading(false);
+      return;
     }
+
+    const { data: membership } = await supabase
+      .from("account_members")
+      .select("account_id")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (!membership) {
+      setLoading(false);
+      return;
+    }
+
+    const { data } = await supabase
+      .from("sites")
+      .select("id, title, username, primary_color, created_at, is_published")
+      .eq("account_id", membership.account_id)
+      .order("created_at", { ascending: false });
+
+    if (data) {
+      setSites(data);
+    }
+
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchSites();
     if (typeof window !== "undefined") {
       setOrigin(window.location.origin);
@@ -86,30 +105,24 @@ export default function Dashboard() {
   };
 
   const handleDelete = async () => {
-    if (
-      !siteToDelete ||
-      confirmName !== siteToDelete.title ||
-      !siteToDelete.user_id
-    )
-      return;
+    if (!siteToDelete || confirmName !== siteToDelete.title) return;
+
     setIsDeleting(true);
+
     try {
-      const result = await deleteSiteAction(
-        siteToDelete.id,
-        siteToDelete.user_id,
-      );
+      const result = await deleteSiteAction(siteToDelete.id);
+
       if (!result.success) {
         throw new Error(result.error);
       }
-      setSites(sites.filter((s) => s.id !== siteToDelete.id));
+
+      setSites((prev) => prev.filter((s) => s.id !== siteToDelete.id));
       toast.success("Project terminated successfully");
       closeDeleteModal();
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        toast.error(error.message);
-      } else {
-        toast.error("An unexpected error occurred");
-      }
+      toast.error(
+        error instanceof Error ? error.message : "An unexpected error occurred",
+      );
     } finally {
       setIsDeleting(false);
     }
@@ -206,7 +219,6 @@ export default function Dashboard() {
                 href="/dashboard/templates"
                 className="group relative inline-flex items-center gap-3 px-6 sm:px-8 py-3 sm:py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl sm:rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-xl hover:shadow-indigo-500/25 overflow-hidden"
               >
-                <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-linear-to-r from-transparent via-white/20 dark:via-black/10 to-transparent skew-x-12" />
                 Initialize First Node
                 <ArrowRight
                   size={16}
@@ -244,7 +256,6 @@ export default function Dashboard() {
                         style={{
                           backgroundColor: `${siteColor}15`,
                           color: siteColor,
-                          boxShadow: `inset 0 0 20px ${siteColor}05`,
                         }}
                       >
                         <Layout size={28} />
@@ -280,21 +291,19 @@ export default function Dashboard() {
                       <div className="w-full flex gap-2">
                         <Link
                           href={`/dashboard/editor/${site.id}`}
-                          className="flex-1 py-3 sm:py-4 bg-slate-50 dark:bg-white/5 rounded-xl text-center text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white hover:border-indigo-600 dark:hover:bg-indigo-600 transition-all border border-slate-100 dark:border-white/5 flex items-center justify-center gap-1.5"
+                          className="flex-1 py-3 sm:py-4 bg-slate-50 dark:bg-white/5 rounded-xl text-center text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 transition-all border border-slate-100 dark:border-white/5 flex items-center justify-center gap-1.5"
                         >
                           <Pencil size={14} /> Edit
                         </Link>
-
                         <Link
                           href={`/dashboard/analytics/${site.id}`}
-                          className="flex-1 py-3 sm:py-4 bg-slate-50 dark:bg-white/5 rounded-xl text-center text-[10px] font-black uppercase tracking-widest hover:bg-purple-600 hover:text-white hover:border-purple-600 dark:hover:bg-purple-600 transition-all border border-slate-100 dark:border-white/5 flex items-center justify-center gap-1.5"
+                          className="flex-1 py-3 sm:py-4 bg-slate-50 dark:bg-white/5 rounded-xl text-center text-[10px] font-black uppercase tracking-widest hover:bg-purple-600 hover:text-white dark:hover:bg-purple-600 transition-all border border-slate-100 dark:border-white/5 flex items-center justify-center gap-1.5"
                         >
                           <Activity size={14} /> Stats
                         </Link>
-
                         <Link
                           href={`/dashboard/settings/${site.id}`}
-                          className="flex-1 py-3 sm:py-4 bg-slate-50 dark:bg-white/5 rounded-xl text-center text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 hover:text-white hover:border-slate-800 dark:hover:bg-white/10 transition-all border border-slate-100 dark:border-white/5 flex items-center justify-center gap-1.5"
+                          className="flex-1 py-3 sm:py-4 bg-slate-50 dark:bg-white/5 rounded-xl text-center text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 hover:text-white dark:hover:bg-white/10 transition-all border border-slate-100 dark:border-white/5 flex items-center justify-center gap-1.5"
                         >
                           <Settings size={14} /> Settings
                         </Link>
@@ -305,13 +314,9 @@ export default function Dashboard() {
                           <>
                             <button
                               onClick={() => openShareModal(site)}
-                              className="flex-1 p-3 sm:p-4 bg-slate-50 dark:bg-white/5 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-600 hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-all border border-slate-100 dark:border-white/5 text-slate-400 group/link flex justify-center items-center gap-2"
-                              title="Share Site"
+                              className="flex-1 p-3 sm:p-4 bg-slate-50 dark:bg-white/5 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-600 transition-all border border-slate-100 dark:border-white/5 text-slate-400 flex justify-center items-center gap-2"
                             >
-                              <Share2
-                                size={16}
-                                className="group-hover/link:scale-110 transition-transform"
-                              />
+                              <Share2 size={16} />
                               <span className="text-[10px] font-black uppercase tracking-widest sm:hidden">
                                 Share
                               </span>
@@ -320,13 +325,9 @@ export default function Dashboard() {
                               href={siteUrl}
                               target="_blank"
                               rel="noreferrer"
-                              className="flex-1 p-3 sm:p-4 bg-slate-50 dark:bg-white/5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 transition-all border border-slate-100 dark:border-white/5 text-slate-400 hover:text-slate-900 dark:hover:text-white group/link flex justify-center items-center gap-2"
-                              title="Visit Site"
+                              className="flex-1 p-3 sm:p-4 bg-slate-50 dark:bg-white/5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 transition-all border border-slate-100 dark:border-white/5 text-slate-400 hover:text-slate-900 dark:hover:text-white flex justify-center items-center gap-2"
                             >
-                              <ExternalLink
-                                size={16}
-                                className="group-hover/link:scale-110 transition-transform"
-                              />
+                              <ExternalLink size={16} />
                               <span className="text-[10px] font-black uppercase tracking-widest sm:hidden">
                                 Visit
                               </span>
@@ -336,7 +337,6 @@ export default function Dashboard() {
                           <button
                             disabled
                             className="w-full p-3 sm:p-4 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/5 text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-50 flex items-center justify-center gap-2"
-                            title="Publish this site to share it"
                           >
                             <Share2 size={14} /> Publish to Share
                           </button>
@@ -436,11 +436,9 @@ export default function Dashboard() {
               >
                 <X size={24} />
               </button>
-
               <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-500 mb-6">
                 <Share2 size={28} />
               </div>
-
               <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2 tracking-tight uppercase">
                 Share Project
               </h2>
@@ -451,18 +449,16 @@ export default function Dashboard() {
                 </span>{" "}
                 with the world.
               </p>
-
               <div className="p-4 bg-white rounded-2xl shadow-sm border border-slate-100 mb-8 inline-block">
                 <QRCodeSVG
                   value={`${origin}/${siteToShare.username}`}
                   size={180}
-                  bgColor={"#ffffff"}
-                  fgColor={"#0f172a"}
-                  level={"H"}
+                  bgColor="#ffffff"
+                  fgColor="#0f172a"
+                  level="H"
                   includeMargin={false}
                 />
               </div>
-
               <div className="w-full flex items-center gap-2 mb-8 bg-slate-50 dark:bg-slate-950 p-2 rounded-2xl border border-slate-200 dark:border-white/5">
                 <div className="flex-1 truncate px-3 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-left">
                   {origin.replace(/^https?:\/\//, "")}/{siteToShare.username}
@@ -476,7 +472,6 @@ export default function Dashboard() {
                   <Copy size={14} /> Copy
                 </button>
               </div>
-
               <div className="w-full border-t border-slate-100 dark:border-white/5 pt-6">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">
                   Share via
