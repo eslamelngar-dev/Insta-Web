@@ -9,16 +9,15 @@ import {
   CalendarDays,
   Shield,
   Sparkles,
+  Globe,
+  BarChart3,
+  Layout,
+  Inbox,
 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  getPlanLabel,
-  listPublicPlans,
-  normalizePlan,
-  resolveEffectivePlan,
-} from "@/lib/plans";
+import { getPlanLabel, listPublicPlans, normalizePlan } from "@/lib/plans";
 import type { Plan } from "@/lib/plans";
-import type { AdminAccountSummary } from "@/types/admin";
+import type { AdminAccountSummary, PlatformStats } from "@/types/admin";
 import {
   listAdminAccountsAction,
   setAccountTrialAction,
@@ -33,15 +32,47 @@ function buildPlanMap(accounts: AdminAccountSummary[]): Record<string, Plan> {
   );
 }
 
+interface StatCardProps {
+  label: string;
+  value: number;
+  icon: React.ElementType;
+  color: string;
+  sub?: string;
+}
+
+function StatCard({ label, value, icon: Icon, color, sub }: StatCardProps) {
+  return (
+    <div className="rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 p-5 shadow-sm">
+      <div className="flex items-start justify-between mb-3">
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+          {label}
+        </p>
+        <div className={`p-2 rounded-xl ${color}`}>
+          <Icon size={14} />
+        </div>
+      </div>
+      <p className="text-3xl font-black">{value.toLocaleString()}</p>
+      {sub && (
+        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">
+          {sub}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function AdminAccountsManager({
   initialAccounts,
+  initialStats,
   adminEmail,
 }: {
   initialAccounts: AdminAccountSummary[];
+  initialStats: PlatformStats;
   adminEmail: string | null;
 }) {
   const [accounts, setAccounts] =
     useState<AdminAccountSummary[]>(initialAccounts);
+  const [stats, setStats] = useState<PlatformStats>(initialStats);
   const [planMap, setPlanMap] = useState<Record<string, Plan>>(
     buildPlanMap(initialAccounts),
   );
@@ -51,7 +82,6 @@ export default function AdminAccountsManager({
 
   const filteredAccounts = useMemo(() => {
     const term = query.trim().toLowerCase();
-
     if (!term) return accounts;
 
     return accounts.filter((account) => {
@@ -85,8 +115,12 @@ export default function AdminAccountsManager({
 
       syncAccounts(result.data.accounts);
 
+      if (result.data.stats) {
+        setStats(result.data.stats);
+      }
+
       if (showToast) {
-        toast.success("Accounts refreshed successfully.");
+        toast.success("Data refreshed successfully.");
       }
     } finally {
       setRefreshing(false);
@@ -95,7 +129,6 @@ export default function AdminAccountsManager({
 
   const handlePlanSave = async (accountId: string) => {
     const selectedPlan = normalizePlan(planMap[accountId]);
-
     setBusyKey(`plan:${accountId}`);
 
     try {
@@ -121,10 +154,7 @@ export default function AdminAccountsManager({
     setBusyKey(`trial:${accountId}`);
 
     try {
-      const result = await setAccountTrialAction({
-        accountId,
-        days: 14,
-      });
+      const result = await setAccountTrialAction({ accountId, days: 14 });
 
       if (!result.success) {
         toast.error(result.error);
@@ -142,10 +172,7 @@ export default function AdminAccountsManager({
     setBusyKey(`trial-clear:${accountId}`);
 
     try {
-      const result = await setAccountTrialAction({
-        accountId,
-        days: null,
-      });
+      const result = await setAccountTrialAction({ accountId, days: null });
 
       if (!result.success) {
         toast.error(result.error);
@@ -166,10 +193,10 @@ export default function AdminAccountsManager({
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-black uppercase tracking-[0.25em] mb-4">
               <Shield size={12} />
-              Admin Control
+              Admin Control Panel
             </div>
             <h1 className="text-3xl sm:text-4xl font-black tracking-tight uppercase">
-              Platform Accounts
+              Platform Overview
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 font-medium">
               {adminEmail
@@ -208,37 +235,62 @@ export default function AdminAccountsManager({
           </div>
         </header>
 
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <StatCard
+            label="Total Users"
+            value={stats.totalUsers}
+            icon={Users}
+            color="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500"
+          />
+          <StatCard
+            label="Total Accounts"
+            value={stats.totalAccounts}
+            icon={Shield}
+            color="bg-slate-100 dark:bg-slate-800 text-slate-500"
+          />
+          <StatCard
+            label="Active Trials"
+            value={stats.activeTrials}
+            icon={Sparkles}
+            color="bg-amber-50 dark:bg-amber-500/10 text-amber-500"
+          />
+          <StatCard
+            label="Paid Access"
+            value={stats.paidAccounts}
+            icon={BarChart3}
+            color="bg-green-50 dark:bg-green-500/10 text-green-500"
+          />
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 p-5 shadow-sm">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">
-              Total Accounts
-            </p>
-            <p className="text-3xl font-black">{accounts.length}</p>
-          </div>
+          <StatCard
+            label="Total Sites"
+            value={stats.totalSites}
+            icon={Layout}
+            color="bg-purple-50 dark:bg-purple-500/10 text-purple-500"
+            sub={`${stats.publishedSites} published`}
+          />
+          <StatCard
+            label="Total Leads"
+            value={stats.totalLeads}
+            icon={Inbox}
+            color="bg-pink-50 dark:bg-pink-500/10 text-pink-500"
+          />
+          <StatCard
+            label="Total Page Views"
+            value={stats.totalPageViews}
+            icon={Globe}
+            color="bg-blue-50 dark:bg-blue-500/10 text-blue-500"
+          />
+        </div>
 
-          <div className="rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 p-5 shadow-sm">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">
-              Active Trials
-            </p>
-            <p className="text-3xl font-black">
-              {accounts.filter((account) => account.isTrialActive).length}
-            </p>
-          </div>
-
-          <div className="rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 p-5 shadow-sm">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">
-              Paid Access
-            </p>
-            <p className="text-3xl font-black">
-              {
-                accounts.filter(
-                  (account) =>
-                    account.effectivePlan === "pro" ||
-                    account.effectivePlan === "business",
-                ).length
-              }
-            </p>
-          </div>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-black uppercase tracking-tight">
+            Accounts
+            <span className="ml-3 text-sm font-bold text-slate-400">
+              ({filteredAccounts.length})
+            </span>
+          </h2>
         </div>
 
         {filteredAccounts.length === 0 ? (
@@ -283,11 +335,11 @@ export default function AdminAccountsManager({
                       </div>
                     </div>
 
-                    <div className="text-left sm:text-right">
+                    <div className="text-left sm:text-right shrink-0">
                       <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
                         Account ID
                       </p>
-                      <p className="text-xs font-mono text-slate-500 dark:text-slate-400 mt-1 break-all">
+                      <p className="text-xs font-mono text-slate-500 dark:text-slate-400 mt-1 break-all max-w-[140px]">
                         {account.accountId}
                       </p>
                     </div>
@@ -298,10 +350,10 @@ export default function AdminAccountsManager({
                       <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
                         Owner
                       </p>
-                      <p className="text-sm font-bold mt-2">
+                      <p className="text-sm font-bold mt-2 truncate">
                         {account.ownerName || "Unknown"}
                       </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">
                         {account.ownerUsername
                           ? `@${account.ownerUsername}`
                           : "No username"}
@@ -339,7 +391,7 @@ export default function AdminAccountsManager({
                             [account.accountId]: normalizePlan(e.target.value),
                           }))
                         }
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl px-4 py-3 text-sm font-bold outline-none focus:border-indigo-500"
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl px-4 py-3 text-sm font-bold outline-none focus:border-indigo-500 transition-all"
                       >
                         {AVAILABLE_PLANS.map((plan) => (
                           <option key={plan} value={plan}>
@@ -369,7 +421,7 @@ export default function AdminAccountsManager({
                         className="w-full py-3 rounded-2xl bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 text-xs font-black uppercase tracking-widest hover:bg-amber-200 dark:hover:bg-amber-500/20 transition-all disabled:opacity-50"
                       >
                         {busyKey === `trial:${account.accountId}` ? (
-                          <span className="inline-flex items-center gap-2">
+                          <span className="inline-flex items-center justify-center gap-2">
                             <Loader2 size={14} className="animate-spin" />
                             Applying Trial
                           </span>
@@ -384,7 +436,7 @@ export default function AdminAccountsManager({
                         className="w-full py-3 rounded-2xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-black uppercase tracking-widest hover:bg-slate-300 dark:hover:bg-slate-700 transition-all disabled:opacity-50"
                       >
                         {busyKey === `trial-clear:${account.accountId}` ? (
-                          <span className="inline-flex items-center gap-2">
+                          <span className="inline-flex items-center justify-center gap-2">
                             <Loader2 size={14} className="animate-spin" />
                             Clearing
                           </span>
@@ -396,7 +448,7 @@ export default function AdminAccountsManager({
 
                     {account.trialEndsAt && (
                       <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                        Trial ends at:{" "}
+                        Trial ends:{" "}
                         <span className="font-bold">
                           {new Date(account.trialEndsAt).toLocaleString()}
                         </span>

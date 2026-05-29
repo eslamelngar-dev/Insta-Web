@@ -1,12 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin, fetchAdminAccountsSnapshot } from "@/lib/admin";
+import {
+  requireAdmin,
+  fetchAdminAccountsSnapshot,
+  fetchPlatformStats,
+} from "@/lib/admin";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { AppError, ErrorCode } from "@/lib/errors";
 import { isPlan } from "@/lib/plans";
 import type { Plan } from "@/lib/plans";
-import type { AdminAccountSummary } from "@/types/admin";
+import type { AdminAccountSummary, PlatformStats } from "@/types/admin";
 
 export type ActionResult<T = void> =
   | { success: true; data: T }
@@ -36,18 +40,23 @@ function isUuid(value: string): boolean {
 
 export async function listAdminAccountsAction(
   limit = 200,
-): Promise<ActionResult<{ accounts: AdminAccountSummary[] }>> {
+): Promise<
+  ActionResult<{ accounts: AdminAccountSummary[]; stats: PlatformStats }>
+> {
   try {
     await requireAdmin();
 
     const safeLimit =
       Number.isInteger(limit) && limit > 0 && limit <= 500 ? limit : 200;
 
-    const accounts = await fetchAdminAccountsSnapshot(safeLimit);
+    const [accounts, stats] = await Promise.all([
+      fetchAdminAccountsSnapshot(safeLimit),
+      fetchPlatformStats(),
+    ]);
 
     return {
       success: true,
-      data: { accounts },
+      data: { accounts, stats },
     };
   } catch (error) {
     return actionError(error);
@@ -148,9 +157,7 @@ export async function setAccountTrialAction(input: {
 
     const { data, error } = await supabaseAdmin
       .from("accounts")
-      .update({
-        trial_ends_at: trialEndsAt,
-      })
+      .update({ trial_ends_at: trialEndsAt })
       .eq("id", input.accountId)
       .select("id")
       .single();

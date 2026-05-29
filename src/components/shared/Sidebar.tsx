@@ -15,6 +15,7 @@ import {
   X,
   Inbox,
   Loader2,
+  Shield,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -29,16 +30,20 @@ import {
 } from "@/lib/plans";
 import type { Plan } from "@/lib/plans";
 
-const MENU_ITEMS = [
+const BASE_MENU_ITEMS = [
   { icon: LayoutDashboard, label: "My Sites", href: "/dashboard" },
   { icon: Layout, label: "Templates", href: "/dashboard/templates" },
   { icon: Inbox, label: "Leads", href: "/dashboard/leads" },
   { icon: Globe, label: "Domains", href: "/dashboard/domains" },
   { icon: CreditCard, label: "Billing", href: "/dashboard/billing" },
   { icon: Settings, label: "Settings", href: "/dashboard/settings" },
-];
+] as const;
 
-export default function Sidebar() {
+interface SidebarProps {
+  isAdmin?: boolean;
+}
+
+export default function Sidebar({ isAdmin = false }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
@@ -49,6 +54,14 @@ export default function Sidebar() {
   const [loadingPlan, setLoadingPlan] = useState(true);
   const [accountPlan, setAccountPlan] = useState<Plan>("free");
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
+
+  const menuItems = useMemo(() => {
+    if (!isAdmin) return BASE_MENU_ITEMS;
+    return [
+      ...BASE_MENU_ITEMS,
+      { icon: Shield, label: "Admin", href: "/admin" },
+    ] as const;
+  }, [isAdmin]);
 
   useEffect(() => setMounted(true), []);
 
@@ -173,7 +186,7 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-2">
-        {MENU_ITEMS.map((item) => {
+        {menuItems.map((item) => {
           const active = isActive(item.href);
 
           return (

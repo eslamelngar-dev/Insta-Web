@@ -9,6 +9,17 @@ import {
 } from "@/lib/plans";
 import type { AdminAccountSummary } from "@/types/admin";
 
+export interface PlatformStats {
+  totalAccounts: number;
+  totalUsers: number;
+  totalSites: number;
+  publishedSites: number;
+  totalLeads: number;
+  totalPageViews: number;
+  activeTrials: number;
+  paidAccounts: number;
+}
+
 export async function requireAdmin() {
   const context = await requireUser();
 
@@ -22,6 +33,50 @@ export async function requireAdmin() {
   }
 
   return context;
+}
+
+export async function fetchPlatformStats(): Promise<PlatformStats> {
+  const [
+    accountsResult,
+    usersResult,
+    sitesResult,
+    publishedSitesResult,
+    leadsResult,
+    pageViewsResult,
+  ] = await Promise.all([
+    supabaseAdmin
+      .from("accounts")
+      .select("id, plan, trial_ends_at", { count: "exact" }),
+    supabaseAdmin.from("profiles").select("id", { count: "exact" }),
+    supabaseAdmin.from("sites").select("id", { count: "exact" }),
+    supabaseAdmin
+      .from("sites")
+      .select("id", { count: "exact" })
+      .eq("is_published", true),
+    supabaseAdmin.from("leads").select("id", { count: "exact" }),
+    supabaseAdmin.from("page_views").select("id", { count: "exact" }),
+  ]);
+
+  const accounts = accountsResult.data ?? [];
+  const activeTrials = accounts.filter((account) =>
+    isTrialActive(normalizePlan(account.plan), account.trial_ends_at ?? null),
+  ).length;
+
+  const paidAccounts = accounts.filter((account) => {
+    const plan = normalizePlan(account.plan);
+    return plan === "pro" || plan === "business";
+  }).length;
+
+  return {
+    totalAccounts: accountsResult.count ?? 0,
+    totalUsers: usersResult.count ?? 0,
+    totalSites: sitesResult.count ?? 0,
+    publishedSites: publishedSitesResult.count ?? 0,
+    totalLeads: leadsResult.count ?? 0,
+    totalPageViews: pageViewsResult.count ?? 0,
+    activeTrials,
+    paidAccounts,
+  };
 }
 
 export async function fetchAdminAccountsSnapshot(
@@ -91,7 +146,6 @@ export async function fetchAdminAccountsSnapshot(
 
   for (const membership of membershipsData ?? []) {
     if (membership.status !== "active") continue;
-
     membersCountMap.set(
       membership.account_id,
       (membersCountMap.get(membership.account_id) ?? 0) + 1,

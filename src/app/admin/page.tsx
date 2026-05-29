@@ -1,20 +1,26 @@
 import { redirect } from "next/navigation";
 import AdminAccountsManager from "@/components/admin/AdminAccountsManager";
-import { fetchAdminAccountsSnapshot, requireAdmin } from "@/lib/admin";
+import {
+  fetchAdminAccountsSnapshot,
+  fetchPlatformStats,
+  requireAdmin,
+} from "@/lib/admin";
+
+export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
-  let adminEmail: string | null = null;
+  const adminContext = await requireAdmin().catch(() => redirect("/dashboard"));
 
-  try {
-    const { user } = await requireAdmin();
-    adminEmail = user.email ?? null;
-  } catch {
-    redirect("/dashboard");
-  }
-
-  const accounts = await fetchAdminAccountsSnapshot(200);
+  const [accounts, stats] = await Promise.all([
+    fetchAdminAccountsSnapshot(200),
+    fetchPlatformStats(),
+  ]);
 
   return (
-    <AdminAccountsManager initialAccounts={accounts} adminEmail={adminEmail} />
+    <AdminAccountsManager
+      initialAccounts={accounts}
+      initialStats={stats}
+      adminEmail={adminContext.user.email ?? null}
+    />
   );
 }

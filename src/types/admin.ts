@@ -12,3 +12,14 @@ export interface AdminAccountSummary {
   ownerUsername: string | null;
   membersCount: number;
 }
+
+export interface PlatformStats {
+  totalAccounts: number;
+  totalUsers: number;
+  totalSites: number;
+  publishedSites: number;
+  totalLeads: number;
+  totalPageViews: number;
+  activeTrials: number;
+  paidAccounts: number;
+}
