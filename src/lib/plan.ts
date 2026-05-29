@@ -1,19 +1,43 @@
 import { ForbiddenError, AppError, ErrorCode } from "@/lib/errors";
 import { createClient } from "@/lib/supabase-server";
-
-export type Plan = "free" | "pro" | "business";
+import {
+  type Plan,
+  normalizePlan,
+  isPlanAllowed,
+  getPlanDefinition,
+} from "@/lib/plans";
 
 type ServerSupabase = Awaited<ReturnType<typeof createClient>>;
 
-function normalizePlan(plan: unknown): Plan {
-  if (plan === "pro" || plan === "business") return plan;
-  return "free";
+export type { Plan };
+
+export interface AccountPlanState {
+  storedPlan: Plan;
+  effectivePlan: Plan;
+  trialEndsAt: string | null;
+  isTrialActive: boolean;
+  definition: ReturnType<typeof getPlanDefinition>;
 }
 
-export async function getAccountPlan(
+export function resolveEffectivePlan(
+  storedPlan: Plan,
+  trialEndsAt: string | null,
+): Plan {
+  if (
+    storedPlan === "free" &&
+    trialEndsAt &&
+    new Date(trialEndsAt) > new Date()
+  ) {
+    return "pro";
+  }
+
+  return storedPlan;
+}
+
+export async function getAccountPlanState(
   supabase: ServerSupabase,
   accountId: string,
-): Promise<Plan> {
+): Promise<AccountPlanState> {
   const { data, error } = await supabase
     .from("accounts")
     .select("plan, trial_ends_at")
@@ -27,14 +51,30 @@ export async function getAccountPlan(
     });
   }
 
-  const basePlan = normalizePlan(data.plan);
-  const trialEndsAt = data.trial_ends_at ? new Date(data.trial_ends_at) : null;
+  const storedPlan = normalizePlan(data.plan);
+  const trialEndsAt = data.trial_ends_at ?? null;
+  const isTrialActive =
+    storedPlan === "free" &&
+    !!trialEndsAt &&
+    new Date(trialEndsAt) > new Date();
 
-  if (basePlan === "free" && trialEndsAt && trialEndsAt > new Date()) {
-    return "pro";
-  }
+  const effectivePlan = resolveEffectivePlan(storedPlan, trialEndsAt);
 
-  return basePlan;
+  return {
+    storedPlan,
+    effectivePlan,
+    trialEndsAt,
+    isTrialActive,
+    definition: getPlanDefinition(effectivePlan),
+  };
+}
+
+export async function getAccountPlan(
+  supabase: ServerSupabase,
+  accountId: string,
+): Promise<Plan> {
+  const planState = await getAccountPlanState(supabase, accountId);
+  return planState.effectivePlan;
 }
 
 export async function requireAccountPlan(
@@ -44,7 +84,7 @@ export async function requireAccountPlan(
 ): Promise<Plan> {
   const plan = await getAccountPlan(supabase, accountId);
 
-  if (!allowedPlans.includes(plan)) {
+  if (!isPlanAllowed(plan, allowedPlans)) {
     throw new ForbiddenError(true);
   }
 

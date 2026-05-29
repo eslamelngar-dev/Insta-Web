@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   LayoutDashboard,
   Globe,
@@ -14,12 +14,15 @@ import {
   Menu,
   X,
   Inbox,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { normalizePlan, resolveEffectivePlan } from "@/lib/plans";
+import type { Plan } from "@/lib/plans";
 
 const MENU_ITEMS = [
   { icon: LayoutDashboard, label: "My Sites", href: "/dashboard" },
@@ -34,9 +37,13 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
+
   const [mounted, setMounted] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [loadingPlan, setLoadingPlan] = useState(true);
+  const [accountPlan, setAccountPlan] = useState<Plan>("free");
+  const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
 
   useEffect(() => setMounted(true), []);
 
@@ -51,13 +58,74 @@ export default function Sidebar() {
     };
   }, [mobileOpen]);
 
+  useEffect(() => {
+    const fetchAccountPlan = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        setLoadingPlan(false);
+        return;
+      }
+
+      const { data: membership } = await supabase
+        .from("account_members")
+        .select("account_id")
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (!membership) {
+        setLoadingPlan(false);
+        return;
+      }
+
+      const { data: account } = await supabase
+        .from("accounts")
+        .select("plan, trial_ends_at")
+        .eq("id", membership.account_id)
+        .single();
+
+      if (account) {
+        setAccountPlan(normalizePlan(account.plan));
+        setTrialEndsAt(account.trial_ends_at ?? null);
+      }
+
+      setLoadingPlan(false);
+    };
+
+    fetchAccountPlan();
+  }, []);
+
+  const effectivePlan = useMemo<Plan>(
+    () => resolveEffectivePlan(accountPlan, trialEndsAt),
+    [accountPlan, trialEndsAt],
+  );
+
+  const planLabel = useMemo(() => {
+    if (
+      accountPlan === "free" &&
+      trialEndsAt &&
+      new Date(trialEndsAt) > new Date()
+    ) {
+      return "Pro Trial";
+    }
+    if (effectivePlan === "business") return "Business";
+    if (effectivePlan === "pro") return "Pro";
+    return "Free";
+  }, [accountPlan, effectivePlan, trialEndsAt]);
+
+  const showUpgradeButton = effectivePlan === "free";
+
   const isActive = (href: string) =>
     href === "/dashboard" ? pathname === href : pathname.startsWith(href);
 
   const handleSignOut = async () => {
     if (isSigningOut) return;
     setIsSigningOut(true);
-
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
@@ -77,6 +145,7 @@ export default function Sidebar() {
             INSTAWEB
           </span>
         </div>
+
         <div className="flex items-center gap-2">
           <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
@@ -89,6 +158,7 @@ export default function Sidebar() {
                 <Moon size={16} className="text-slate-600" />
               ))}
           </button>
+
           <button
             onClick={() => setMobileOpen(false)}
             className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-white/5 transition-colors lg:hidden"
@@ -124,18 +194,36 @@ export default function Sidebar() {
           <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-2">
             Current Tier
           </p>
+
           <div className="flex items-center gap-2 mb-4">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tighter">
-              Early Access Free
-            </p>
+            {loadingPlan ? (
+              <div className="flex items-center gap-2 text-xs font-black text-slate-900 dark:text-white uppercase tracking-tighter">
+                <Loader2 size={12} className="animate-spin" />
+                Loading
+              </div>
+            ) : (
+              <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tighter">
+                {planLabel}
+              </p>
+            )}
           </div>
-          <Link
-            href="/dashboard/billing"
-            className="block w-full py-2.5 bg-indigo-600 text-white rounded-xl text-center text-[10px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/20"
-          >
-            Upgrade to Pro
-          </Link>
+
+          {showUpgradeButton ? (
+            <Link
+              href="/dashboard/billing"
+              className="block w-full py-2.5 bg-indigo-600 text-white rounded-xl text-center text-[10px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/20"
+            >
+              Upgrade to Pro
+            </Link>
+          ) : (
+            <Link
+              href="/dashboard/billing"
+              className="block w-full py-2.5 bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-300 rounded-xl text-center text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-slate-800 transition-all"
+            >
+              Manage Plan
+            </Link>
+          )}
         </div>
 
         <button
@@ -162,6 +250,7 @@ export default function Sidebar() {
             INSTAWEB
           </span>
         </div>
+
         <button
           onClick={() => setMobileOpen(true)}
           className="p-2 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5"
@@ -172,13 +261,13 @@ export default function Sidebar() {
 
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-60 bg-black/50 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
       <aside
-        className={`fixed top-0 left-0 h-screen w-72 border-r border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-slate-950 flex flex-col p-6 z-70 transition-transform duration-300 ease-in-out lg:sticky lg:top-0 lg:translate-x-0 ${
+        className={`fixed top-0 left-0 h-screen w-72 border-r border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-slate-950 flex flex-col p-6 z-50 transition-transform duration-300 ease-in-out lg:sticky lg:top-0 lg:translate-x-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
