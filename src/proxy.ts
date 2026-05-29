@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isAdminIdentity } from "@/lib/admin-access";
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -39,10 +40,25 @@ export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const fullPath = `${pathname}${request.nextUrl.search}`;
 
-  if (pathname.startsWith("/dashboard") && (!user || error)) {
+  const needsAuth =
+    pathname.startsWith("/dashboard") || pathname.startsWith("/admin");
+
+  if (needsAuth && (!user || error)) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirectTo", fullPath);
     return NextResponse.redirect(loginUrl);
+  }
+
+  if (
+    pathname.startsWith("/admin") &&
+    user &&
+    !error &&
+    !isAdminIdentity({
+      id: user.id,
+      email: user.email ?? null,
+    })
+  ) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   if (
@@ -57,5 +73,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/login", "/register"],
+  matcher: ["/dashboard/:path*", "/admin/:path*", "/login", "/register"],
 };
