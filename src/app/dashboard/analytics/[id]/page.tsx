@@ -16,6 +16,7 @@ import {
   Layout,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 interface Site {
@@ -43,6 +44,7 @@ export default function AnalyticsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const router = useRouter();
   const [site, setSite] = useState<Site | null>(null);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<RealStats>({
@@ -54,18 +56,48 @@ export default function AnalyticsPage({
 
   useEffect(() => {
     const fetchSiteAndStats = async () => {
-      const { data: siteData } = await supabase
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+
+      const { data: membership } = await supabase
+        .from("account_members")
+        .select("account_id")
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (!membership) {
+        router.push("/dashboard");
+        return;
+      }
+
+      const { data: siteData, error: siteError } = await supabase
         .from("sites")
         .select("id, title, username, primary_color")
         .eq("id", id)
+        .eq("account_id", membership.account_id)
         .single();
 
-      if (siteData) setSite(siteData);
+      if (siteError || !siteData) {
+        router.push("/dashboard");
+        return;
+      }
+
+      setSite(siteData);
 
       const { data: viewsData } = await supabase
         .from("page_views")
-        .select("*")
-        .eq("site_id", id);
+        .select("visitor_id, device, referrer")
+        .eq("site_id", id)
+        .eq("account_id", membership.account_id);
 
       if (viewsData && viewsData.length > 0) {
         const totalViews = viewsData.length;
@@ -85,6 +117,7 @@ export default function AnalyticsPage({
           "bg-slate-800 dark:bg-slate-200",
           "bg-indigo-500",
         ];
+
         const topReferrers = Object.entries(referrersMap)
           .map(([name, views], idx) => ({
             name,
@@ -129,7 +162,7 @@ export default function AnalyticsPage({
     };
 
     fetchSiteAndStats();
-  }, [id]);
+  }, [id, router]);
 
   if (loading) {
     return (
@@ -139,13 +172,7 @@ export default function AnalyticsPage({
     );
   }
 
-  if (!site) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950 text-slate-500">
-        Site not found.
-      </div>
-    );
-  }
+  if (!site) return null;
 
   const siteColor = site.primary_color || "#6366f1";
 
@@ -212,7 +239,7 @@ export default function AnalyticsPage({
               className="p-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-3xl shadow-sm relative overflow-hidden group"
             >
               <div
-                className="absolute top-0 right-0 w-24 h-24 bg-linear-to-br opacity-5 group-hover:opacity-10 transition-opacity rounded-full -mr-10 -mt-10 blur-xl"
+                className="absolute top-0 right-0 w-24 h-24 opacity-5 group-hover:opacity-10 transition-opacity rounded-full -mr-10 -mt-10 blur-xl"
                 style={{
                   backgroundImage: `linear-gradient(to bottom right, ${siteColor}, transparent)`,
                 }}
@@ -316,7 +343,7 @@ export default function AnalyticsPage({
               ))}
             </div>
 
-            <div className="mt-8 flex h-3 w-full rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 gap-1">
+            <div className="mt-8 flex h-3 w-full rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
               {stats.devices.map((device, i) => (
                 <motion.div
                   key={i}
