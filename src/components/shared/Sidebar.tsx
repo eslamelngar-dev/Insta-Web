@@ -21,7 +21,12 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { normalizePlan, resolveEffectivePlan } from "@/lib/plans";
+import {
+  normalizePlan,
+  resolveEffectivePlan,
+  isTrialActive,
+  getPlanLabel,
+} from "@/lib/plans";
 import type { Plan } from "@/lib/plans";
 
 const MENU_ITEMS = [
@@ -100,23 +105,20 @@ export default function Sidebar() {
     fetchAccountPlan();
   }, []);
 
+  const trialActive = useMemo(
+    () => isTrialActive(accountPlan, trialEndsAt),
+    [accountPlan, trialEndsAt],
+  );
+
   const effectivePlan = useMemo<Plan>(
     () => resolveEffectivePlan(accountPlan, trialEndsAt),
     [accountPlan, trialEndsAt],
   );
 
   const planLabel = useMemo(() => {
-    if (
-      accountPlan === "free" &&
-      trialEndsAt &&
-      new Date(trialEndsAt) > new Date()
-    ) {
-      return "Pro Trial";
-    }
-    if (effectivePlan === "business") return "Business";
-    if (effectivePlan === "pro") return "Pro";
-    return "Free";
-  }, [accountPlan, effectivePlan, trialEndsAt]);
+    if (trialActive) return "Pro Trial";
+    return getPlanLabel(effectivePlan);
+  }, [trialActive, effectivePlan]);
 
   const showUpgradeButton = effectivePlan === "free";
 
@@ -125,7 +127,9 @@ export default function Sidebar() {
 
   const handleSignOut = async () => {
     if (isSigningOut) return;
+
     setIsSigningOut(true);
+
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
@@ -171,6 +175,7 @@ export default function Sidebar() {
       <nav className="flex-1 space-y-2">
         {MENU_ITEMS.map((item) => {
           const active = isActive(item.href);
+
           return (
             <Link
               key={item.label}

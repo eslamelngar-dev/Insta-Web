@@ -8,6 +8,8 @@ import {
   listPublicPlans,
   normalizePlan,
   resolveEffectivePlan,
+  isTrialActive,
+  getPlanLabel,
 } from "@/lib/plans";
 import type { Plan } from "@/lib/plans";
 
@@ -60,15 +62,12 @@ export default function BillingPage() {
     fetchBilling();
   }, []);
 
-  const isTrialActive = useMemo(
-    () =>
-      accountPlan === "free" &&
-      !!trialEndsAt &&
-      new Date(trialEndsAt) > new Date(),
+  const trialActive = useMemo(
+    () => isTrialActive(accountPlan, trialEndsAt),
     [accountPlan, trialEndsAt],
   );
 
-  const effectivePlan = useMemo<Plan>(
+  const effectivePlan = useMemo(
     () => resolveEffectivePlan(accountPlan, trialEndsAt),
     [accountPlan, trialEndsAt],
   );
@@ -100,14 +99,14 @@ export default function BillingPage() {
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-2 text-xs font-black uppercase tracking-widest">
             <span className="w-2 h-2 rounded-full bg-green-500" />
-            Current Access: {effectivePlan}
+            Current Access: {getPlanLabel(effectivePlan)}
           </div>
 
-          {isTrialActive && (
+          {trialActive && (
             <>
               <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-2 text-xs font-black uppercase tracking-widest">
                 <span className="w-2 h-2 rounded-full bg-slate-400" />
-                Base Plan: {accountPlan}
+                Base Plan: {getPlanLabel(accountPlan)}
               </div>
 
               <div className="inline-flex items-center gap-2 rounded-full border border-indigo-200 dark:border-indigo-500/20 bg-indigo-50 dark:bg-indigo-500/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
@@ -122,41 +121,40 @@ export default function BillingPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 md:gap-8">
         {PUBLIC_PLANS.map((plan) => {
-          const isTrialBasePlan = isTrialActive && plan.id === accountPlan;
-          const isTrialAccessPlan = isTrialActive && plan.id === effectivePlan;
-          const isCurrent = !isTrialActive && plan.id === accountPlan;
-          const isUpgrade = !isTrialActive && plan.id !== accountPlan;
+          const isBasePlanCard = trialActive && plan.id === accountPlan;
+          const isTrialAccessCard = trialActive && plan.id === effectivePlan;
+          const isCurrentPlanCard = !trialActive && plan.id === effectivePlan;
 
           let buttonLabel = `Upgrade to ${plan.name}`;
           let disabled = false;
           let buttonClass =
             "bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:opacity-90";
 
-          if (isTrialBasePlan) {
+          if (isBasePlanCard) {
             buttonLabel = "Base Plan";
             disabled = true;
             buttonClass =
               "bg-slate-100 dark:bg-slate-900 text-slate-400 cursor-not-allowed";
-          } else if (isTrialAccessPlan) {
+          } else if (isTrialAccessCard) {
             buttonLabel = "Included in Trial";
             disabled = true;
             buttonClass =
               "bg-slate-100 dark:bg-slate-900 text-slate-400 cursor-not-allowed";
-          } else if (isCurrent) {
+          } else if (isCurrentPlanCard) {
             buttonLabel = "Current Plan";
             disabled = true;
             buttonClass =
               "bg-slate-100 dark:bg-slate-900 text-slate-400 cursor-not-allowed";
-          } else if (isUpgrade && plan.id !== "free") {
-            buttonLabel = `Upgrade to ${plan.name}`;
-            disabled = false;
-            buttonClass =
-              "bg-indigo-600 text-white hover:bg-indigo-500 shadow-xl shadow-indigo-600/20";
           } else if (plan.id === "free") {
             buttonLabel = "Free Plan";
             disabled = true;
             buttonClass =
               "bg-slate-100 dark:bg-slate-900 text-slate-400 cursor-not-allowed";
+          } else if (effectivePlan === "free") {
+            buttonLabel = `Upgrade to ${plan.name}`;
+            disabled = false;
+            buttonClass =
+              "bg-indigo-600 text-white hover:bg-indigo-500 shadow-xl shadow-indigo-600/20";
           }
 
           return (

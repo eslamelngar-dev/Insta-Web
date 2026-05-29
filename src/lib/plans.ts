@@ -106,19 +106,28 @@ export function normalizePlan(value: unknown): Plan {
   return "free";
 }
 
+export function isTrialActive(
+  storedPlan: Plan,
+  trialEndsAt: string | null,
+): boolean {
+  return (
+    storedPlan === "free" && !!trialEndsAt && new Date(trialEndsAt) > new Date()
+  );
+}
+
 export function resolveEffectivePlan(
   storedPlan: Plan,
   trialEndsAt: string | null,
 ): Plan {
-  if (
-    storedPlan === "free" &&
-    trialEndsAt &&
-    new Date(trialEndsAt) > new Date()
-  ) {
+  if (isTrialActive(storedPlan, trialEndsAt)) {
     return "pro";
   }
 
   return storedPlan;
+}
+
+export function getPlanLabel(plan: Plan): string {
+  return PLAN_DEFINITIONS[plan].name;
 }
 
 export function getPlanDefinition(plan: Plan): PlanDefinition {
