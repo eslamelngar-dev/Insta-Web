@@ -294,7 +294,7 @@ export default function AdminAccountsManager({
         </div>
 
         {filteredAccounts.length === 0 ? (
-          <div className="rounded-[2rem] border border-dashed border-slate-300 dark:border-white/10 bg-white dark:bg-slate-900 p-12 text-center">
+          <div className="rounded-4xl border border-dashed border-slate-300 dark:border-white/10 bg-white dark:bg-slate-900 p-12 text-center">
             <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
               No accounts found
             </p>
@@ -312,7 +312,7 @@ export default function AdminAccountsManager({
               return (
                 <div
                   key={account.accountId}
-                  className="rounded-[2rem] border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 p-6 shadow-sm"
+                  className="rounded-4xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 p-6 shadow-sm"
                 >
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
@@ -339,7 +339,7 @@ export default function AdminAccountsManager({
                       <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
                         Account ID
                       </p>
-                      <p className="text-xs font-mono text-slate-500 dark:text-slate-400 mt-1 break-all max-w-[140px]">
+                      <p className="text-xs font-mono text-slate-500 dark:text-slate-400 mt-1 break-all max-w-35">
                         {account.accountId}
                       </p>
                     </div>

@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { headers } from "next/headers";
 import type { Metadata } from "next";
 import SiteRenderer from "@/components/SiteRenderer";
 import { Block } from "@/types";
@@ -14,72 +15,63 @@ type Props = {
   params: Promise<{ username: string }>;
 };
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { username } = await params;
-
-  const { data: site } = await supabase
+async function getSiteByUsername(username: string) {
+  const { data } = await supabase
     .from("sites")
     .select("*")
     .eq("username", username)
     .single();
+  return data;
+}
 
-  if (!site) {
-    return {
-      title: "Not Found | Instaweb",
-      description: "This page does not exist.",
-    };
-  }
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { username } = await params;
+  const headersList = await headers();
+  const customDomain = headersList.get("x-custom-domain");
 
-  if (!site.is_published) {
-    return {
-      title: "Site Offline | Instaweb",
-      description: "This site is currently offline or under maintenance.",
-    };
-  }
+  const site = await getSiteByUsername(username);
+
+  if (!site) return { title: "Not Found | InstaWeb" };
+  if (!site.is_published) return { title: "Site Offline | InstaWeb" };
 
   const content = site.content || {};
-
-  const title = site.title || content.hero?.title || `${username} - Instaweb`;
+  const title = site.title || content.hero?.title || `${username} - InstaWeb`;
   const description =
     site.bio ||
     content.hero?.subtitle ||
     "Check out my personalized digital hub.";
 
   let ogImage = content.cover_url || content.avatar_url;
-
   if (!ogImage && content.blocks) {
     const imageBlock = content.blocks.find(
       (b: Block) => b.type === "image" || b.type === "profile",
     );
-    if (imageBlock && imageBlock.data) {
+    if (imageBlock?.data) {
       ogImage = imageBlock.data.image_url || imageBlock.data.avatar_url;
     }
   }
 
+  const siteUrl = customDomain
+    ? `https://${customDomain}`
+    : `https://instaweb.me/${username}`;
+
   return {
-    title: title,
-    description: description,
+    title,
+    description,
     openGraph: {
-      title: title,
-      description: description,
-      url: `https://instaweb.me/${username}`,
-      siteName: "Instaweb",
+      title,
+      description,
+      url: siteUrl,
+      siteName: "InstaWeb",
       images: ogImage
-        ? [
-            {
-              url: ogImage,
-              width: 1200,
-              height: 630,
-              alt: title,
-            },
-          ]
+        ? [{ url: ogImage, width: 1200, height: 630, alt: title }]
         : [],
       type: "profile",
     },
     twitter: {
       card: "summary_large_image",
-      title: title,
-      description: description,
+      title,
+      description,
       images: ogImage ? [ogImage] : [],
     },
   };
@@ -87,15 +79,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function UserSite({ params }: Props) {
   const { username } = await params;
+  const headersList = await headers();
+  const customDomain = headersList.get("x-custom-domain");
 
-  const { data: site } = await supabase
-    .from("sites")
-    .select("*")
-    .eq("username", username)
-    .single();
+  const site = await getSiteByUsername(username);
 
-  if (!site) {
-    notFound();
+  if (!site) notFound();
+
+  if (
+    !customDomain &&
+    site.custom_domain &&
+    site.domain_status === "verified" &&
+    site.is_published
+  ) {
+    redirect(`https://${site.custom_domain}`);
   }
 
   if (!site.is_published) {
@@ -110,7 +107,7 @@ export default async function UserSite({ params }: Props) {
           </h1>
           <p className="text-slate-400 text-sm font-medium leading-relaxed">
             This digital node is currently unpublished or undergoing
-            maintenance. Please check back later.
+            maintenance.
           </p>
         </div>
       </div>

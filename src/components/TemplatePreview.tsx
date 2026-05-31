@@ -222,7 +222,7 @@ export default function TemplatePreview({
       <iframe
         ref={iframeRef}
         title="Template Live Preview"
-        className="w-[390px] h-[844px] border-none rounded-[2.5rem] overflow-hidden bg-white dark:bg-slate-950 shadow-2xl"
+        className="w-97.5 h-211 border-none rounded-[2.5rem] overflow-hidden bg-white dark:bg-slate-950 shadow-2xl"
       />
       {mountNode &&
         ReactDOM.createPortal(

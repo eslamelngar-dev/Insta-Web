@@ -25,6 +25,8 @@ import {
   togglePublishAction,
   updateSiteSettingsAction,
 } from "@/app/actions/site";
+import { resolveEffectivePlan, normalizePlan } from "@/lib/plans";
+import DomainManager from "@/components/domains/DomainManager";
 
 interface Site {
   id: string;
@@ -47,6 +49,7 @@ export default function SiteSettings({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [togglingPublish, setTogglingPublish] = useState(false);
+  const [isPro, setIsPro] = useState(false);
 
   const [title, setTitle] = useState("");
   const [username, setUsername] = useState("");
@@ -88,22 +91,37 @@ export default function SiteSettings({
         return;
       }
 
-      const { data: siteData, error } = await supabase
-        .from("sites")
-        .select("id, title, username, is_published, account_id")
-        .eq("id", siteId)
-        .eq("account_id", membership.account_id)
-        .single();
+      const [siteResult, accountResult] = await Promise.all([
+        supabase
+          .from("sites")
+          .select("id, title, username, is_published, account_id")
+          .eq("id", siteId)
+          .eq("account_id", membership.account_id)
+          .single(),
+        supabase
+          .from("accounts")
+          .select("plan, trial_ends_at")
+          .eq("id", membership.account_id)
+          .single(),
+      ]);
 
-      if (error || !siteData) {
+      if (siteResult.error || !siteResult.data) {
         toast.error("Site not found");
         router.push("/dashboard");
         return;
       }
 
-      setSite(siteData);
-      setTitle(siteData.title);
-      setUsername(siteData.username);
+      if (accountResult.data) {
+        const effectivePlan = resolveEffectivePlan(
+          normalizePlan(accountResult.data.plan),
+          accountResult.data.trial_ends_at,
+        );
+        setIsPro(effectivePlan !== "free");
+      }
+
+      setSite(siteResult.data);
+      setTitle(siteResult.data.title);
+      setUsername(siteResult.data.username);
       setLoading(false);
     };
 
@@ -161,7 +179,6 @@ export default function SiteSettings({
     return () => clearTimeout(timer);
   }, [username, siteId]);
 
-  // ✅ بيستخدم Server Action
   const handleUpdateGeneral = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!site) return;
@@ -201,7 +218,6 @@ export default function SiteSettings({
     }
   };
 
-  // ✅ بيستخدم Server Action مع plan check حقيقي
   const handleTogglePublish = async () => {
     if (!site) return;
 
@@ -438,6 +454,9 @@ export default function SiteSettings({
               </button>
             </div>
           </section>
+
+          {/* Custom Domain */}
+          <DomainManager siteId={siteId} isPro={isPro} />
 
           {/* Danger Zone */}
           <section className="bg-red-50 dark:bg-red-500/5 border border-red-200 dark:border-red-500/20 rounded-3xl p-6 sm:p-8">

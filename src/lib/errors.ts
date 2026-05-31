@@ -17,6 +17,11 @@ export const ErrorCode = {
   INTERNAL_ERROR: "INTERNAL_ERROR",
   DATABASE_ERROR: "DATABASE_ERROR",
   EXTERNAL_SERVICE_ERROR: "EXTERNAL_SERVICE_ERROR",
+  DOMAIN_ALREADY_EXISTS: "DOMAIN_ALREADY_EXISTS",
+  DOMAIN_LIMIT_REACHED: "DOMAIN_LIMIT_REACHED",
+  DOMAIN_VERIFICATION_FAILED: "DOMAIN_VERIFICATION_FAILED",
+  DOMAIN_NOT_FOUND: "DOMAIN_NOT_FOUND",
+  DOMAIN_ALREADY_VERIFIED: "DOMAIN_ALREADY_VERIFIED",
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -41,6 +46,13 @@ const ERROR_MESSAGES: Record<ErrorCode, string> = {
   DATABASE_ERROR: "Something went wrong. Please try again.",
   EXTERNAL_SERVICE_ERROR:
     "An external service is unavailable. Please try again.",
+  DOMAIN_ALREADY_EXISTS: "This domain is already connected to another site.",
+  DOMAIN_LIMIT_REACHED:
+    "You have reached the maximum number of custom domains for your plan.",
+  DOMAIN_VERIFICATION_FAILED:
+    "Domain verification failed. Please check your DNS settings.",
+  DOMAIN_NOT_FOUND: "Domain not found or not configured.",
+  DOMAIN_ALREADY_VERIFIED: "This domain is already verified.",
 };
 
 const ERROR_STATUS: Record<ErrorCode, number> = {
@@ -62,6 +74,11 @@ const ERROR_STATUS: Record<ErrorCode, number> = {
   INTERNAL_ERROR: 500,
   DATABASE_ERROR: 500,
   EXTERNAL_SERVICE_ERROR: 502,
+  DOMAIN_ALREADY_EXISTS: 409,
+  DOMAIN_LIMIT_REACHED: 403,
+  DOMAIN_VERIFICATION_FAILED: 400,
+  DOMAIN_NOT_FOUND: 404,
+  DOMAIN_ALREADY_VERIFIED: 409,
 };
 
 export class AppError extends Error {
@@ -155,6 +172,21 @@ export class RateLimitError extends AppError {
   }
 }
 
+export class DomainError extends AppError {
+  constructor(
+    code:
+      | "DOMAIN_ALREADY_EXISTS"
+      | "DOMAIN_LIMIT_REACHED"
+      | "DOMAIN_VERIFICATION_FAILED"
+      | "DOMAIN_NOT_FOUND"
+      | "DOMAIN_ALREADY_VERIFIED",
+    details?: Record<string, string>,
+  ) {
+    super({ code: ErrorCode[code], details });
+    this.name = "DomainError";
+  }
+}
+
 export function normalizeSupabaseError(error: {
   code?: string;
   message?: string;
@@ -164,6 +196,9 @@ export function normalizeSupabaseError(error: {
   if (code === "23505") {
     if (message.toLowerCase().includes("username")) {
       return new ConflictError(true);
+    }
+    if (message.toLowerCase().includes("custom_domain")) {
+      return new DomainError("DOMAIN_ALREADY_EXISTS");
     }
     return new ConflictError();
   }
