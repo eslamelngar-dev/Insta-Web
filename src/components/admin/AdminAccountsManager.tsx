@@ -23,8 +23,14 @@ import {
   setAccountTrialAction,
   updateAccountPlanAction,
 } from "@/app/actions/admin";
+import FormDropdown from "@/components/FormDropdown";
 
 const AVAILABLE_PLANS = listPublicPlans().map((plan) => plan.id);
+
+const PLAN_OPTIONS = AVAILABLE_PLANS.map((plan) => ({
+  value: plan,
+  label: getPlanLabel(plan),
+}));
 
 function buildPlanMap(accounts: AdminAccountSummary[]): Record<string, Plan> {
   return Object.fromEntries(
@@ -382,23 +388,26 @@ export default function AdminAccountsManager({
                   </div>
 
                   <div className="mt-6 rounded-3xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-950 p-4 space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3">
-                      <select
+                    <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-end">
+                      <FormDropdown
+                        options={PLAN_OPTIONS}
                         value={selectedPlan}
-                        onChange={(e) =>
+                        onChange={(val) =>
                           setPlanMap((prev) => ({
                             ...prev,
-                            [account.accountId]: normalizePlan(e.target.value),
+                            [account.accountId]: normalizePlan(String(val)),
                           }))
                         }
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl px-4 py-3 text-sm font-bold outline-none focus:border-indigo-500 transition-all"
-                      >
-                        {AVAILABLE_PLANS.map((plan) => (
-                          <option key={plan} value={plan}>
-                            {getPlanLabel(plan)}
-                          </option>
-                        ))}
-                      </select>
+                        placeholder="Select plan"
+                        searchable={false}
+                        colors={{
+                          focusBorder: "#6366f1",
+                          focusRing: "rgba(99,102,241,0.15)",
+                          selected: "#6366f1",
+                          selectedBg: "rgba(99,102,241,0.08)",
+                        }}
+                        icon={<Shield size={16} />}
+                      />
 
                       <button
                         onClick={() => handlePlanSave(account.accountId)}
