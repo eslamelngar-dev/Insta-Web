@@ -45,24 +45,30 @@ function GithubIcon() {
 
 interface OAuthButtonsProps {
   mode: "login" | "register";
+  redirectToPath?: string;
 }
 
-export function OAuthButtons({ mode }: OAuthButtonsProps) {
+export function OAuthButtons({ mode, redirectToPath }: OAuthButtonsProps) {
   const [loadingProvider, setLoadingProvider] = useState<
     "google" | "github" | null
   >(null);
 
   const handleOAuth = async (provider: "google" | "github") => {
     if (loadingProvider) return;
+
     setLoadingProvider(provider);
 
     try {
-      const redirectTo = `${window.location.origin}/api/auth/callback`;
+      const callbackUrl = new URL("/api/auth/callback", window.location.origin);
+
+      if (redirectToPath && redirectToPath.startsWith("/")) {
+        callbackUrl.searchParams.set("redirectTo", redirectToPath);
+      }
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo,
+          redirectTo: callbackUrl.toString(),
           queryParams:
             provider === "google"
               ? { access_type: "offline", prompt: "consent" }
@@ -71,7 +77,7 @@ export function OAuthButtons({ mode }: OAuthButtonsProps) {
       });
 
       if (error) {
-        toast.error(error.message);
+        toast.error("Unable to continue right now. Please try again.");
         setLoadingProvider(null);
       }
     } catch {
@@ -81,48 +87,40 @@ export function OAuthButtons({ mode }: OAuthButtonsProps) {
   };
 
   const isLoading = loadingProvider !== null;
-  const verbLabel = mode === "login" ? "Continue" : "Sign up";
+  const actionText = mode === "login" ? "Continue" : "Continue";
 
   return (
-    <div className="grid grid-cols-2 gap-3">
-      {/* Google */}
+    <div className="flex flex-col gap-3">
       <motion.button
         type="button"
         whileHover={{ scale: isLoading ? 1 : 1.01 }}
         whileTap={{ scale: isLoading ? 1 : 0.98 }}
         onClick={() => handleOAuth("google")}
         disabled={isLoading}
-        className="py-3.5 px-4 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl font-semibold text-sm flex items-center justify-center gap-2.5 hover:border-slate-300 dark:hover:border-white/20 hover:bg-slate-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 dark:text-slate-200"
+        className="w-full h-12 px-4 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl font-semibold text-sm flex items-center justify-center gap-3 text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-white/20 hover:bg-slate-50 dark:hover:bg-white/10 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {loadingProvider === "google" ? (
           <Loader2 size={18} className="animate-spin text-slate-400" />
         ) : (
           <GoogleIcon />
         )}
-        <span className="hidden sm:inline truncate">
-          {verbLabel} with Google
-        </span>
-        <span className="sm:hidden">Google</span>
+        <span>{actionText} with Google</span>
       </motion.button>
 
-      {/* GitHub */}
       <motion.button
         type="button"
         whileHover={{ scale: isLoading ? 1 : 1.01 }}
         whileTap={{ scale: isLoading ? 1 : 0.98 }}
         onClick={() => handleOAuth("github")}
         disabled={isLoading}
-        className="py-3.5 px-4 bg-[#24292e] dark:bg-white/90 text-white dark:text-slate-900 rounded-xl font-semibold text-sm flex items-center justify-center gap-2.5 hover:bg-[#1a1f24] dark:hover:bg-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full h-12 px-4 bg-[#24292e] dark:bg-white/90 text-white dark:text-slate-900 rounded-2xl font-semibold text-sm flex items-center justify-center gap-3 hover:bg-[#1a1f24] dark:hover:bg-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {loadingProvider === "github" ? (
           <Loader2 size={18} className="animate-spin" />
         ) : (
           <GithubIcon />
         )}
-        <span className="hidden sm:inline truncate">
-          {verbLabel} with GitHub
-        </span>
-        <span className="sm:hidden">GitHub</span>
+        <span>{actionText} with GitHub</span>
       </motion.button>
     </div>
   );

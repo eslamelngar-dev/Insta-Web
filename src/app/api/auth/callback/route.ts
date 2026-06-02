@@ -1,16 +1,11 @@
 import { createClient } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-
-const supabaseAdmin = createAdminClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { autoRefreshToken: false, persistSession: false } },
-);
+import { canProvisionUser, ensureUserWorkspace } from "@/lib/user-workspace";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
+  const redirectToParam = searchParams.get("redirectTo");
 
   if (!code) {
     return NextResponse.redirect(
@@ -32,18 +27,24 @@ export async function GET(request: Request) {
       );
     }
 
-    // شوف لو عنده profile مع username
-    const { data: profile } = await supabaseAdmin
-      .from("profiles")
-      .select("username")
-      .eq("id", user.id)
-      .maybeSingle();
+    if (!canProvisionUser(user)) {
+      return NextResponse.redirect(
+        `${origin}/login?error=${encodeURIComponent("Please verify your email before continuing.")}`,
+      );
+    }
 
-    if (!profile?.username) {
+    const { username } = await ensureUserWorkspace(user);
+
+    if (!username) {
       return NextResponse.redirect(`${origin}/onboarding`);
     }
 
-    return NextResponse.redirect(`${origin}/dashboard`);
+    const safeRedirect =
+      redirectToParam && redirectToParam.startsWith("/")
+        ? redirectToParam
+        : "/dashboard";
+
+    return NextResponse.redirect(`${origin}${safeRedirect}`);
   } catch {
     return NextResponse.redirect(
       `${origin}/login?error=${encodeURIComponent("Something went wrong. Please try again.")}`,

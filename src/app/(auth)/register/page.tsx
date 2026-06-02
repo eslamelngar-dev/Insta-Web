@@ -43,12 +43,15 @@ export default function RegisterPage() {
     e.preventDefault();
 
     const result = registerSchema.safeParse(values);
+
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
+
       result.error.issues.forEach((issue) => {
         const key = issue.path[0] as string;
         if (!fieldErrors[key]) fieldErrors[key] = issue.message;
       });
+
       setErrors(fieldErrors);
       Object.keys(values).forEach((k) => markTouched(k));
       return;
@@ -68,35 +71,33 @@ export default function RegisterPage() {
       });
 
       if (error) {
-        if (error.message.includes("already registered")) {
-          setGeneralError(
-            "An account with this email already exists. Try signing in.",
-          );
-        } else {
-          setGeneralError(error.message);
+        if (error.message.toLowerCase().includes("already registered")) {
+          setEmailSent(true);
+          setLoading(false);
+          return;
         }
-        setLoading(false);
-        return;
-      }
 
-      // الإيميل موجود بالفعل
-      if (data.user?.identities?.length === 0) {
         setGeneralError(
-          "An account with this email already exists. Try signing in.",
+          "Unable to create your account right now. Please try again.",
         );
         setLoading(false);
         return;
       }
 
-      // Email confirmation مفعّل
+      if (data.user?.identities?.length === 0) {
+        setEmailSent(true);
+        setLoading(false);
+        return;
+      }
+
       if (data.user && !data.session) {
         setEmailSent(true);
         setLoading(false);
         return;
       }
 
-      toast.success("Welcome aboard! 🎉");
-      router.push("/onboarding");
+      toast.success("Welcome aboard!");
+      router.replace("/onboarding");
       router.refresh();
     } catch {
       setGeneralError("Something went wrong. Please try again.");
@@ -104,7 +105,6 @@ export default function RegisterPage() {
     }
   };
 
-  // ── Email Sent Screen ──────────────────────────────────────────
   if (emailSent) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6">
@@ -128,19 +128,21 @@ export default function RegisterPage() {
           <h1 className="text-2xl font-black text-slate-900 dark:text-white mb-3">
             Check Your Email
           </h1>
+
           <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed max-w-sm mx-auto mb-8">
-            We sent a confirmation link to{" "}
+            If this email can be used to create or access an account, we&apos;ve
+            sent next steps to{" "}
             <span className="text-slate-900 dark:text-white font-bold">
               {values.email}
             </span>
-            . Click it to activate your account.
+            .
           </p>
 
           <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl p-6 space-y-4 text-left">
             {[
               "Open the email from InstaWeb",
-              "Click the confirmation link",
-              "Start building your site!",
+              "Follow the link inside the message",
+              "Finish setup and start building",
             ].map((step, i) => (
               <div key={i} className="flex items-center gap-3">
                 <div className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-500/10 flex items-center justify-center shrink-0">
@@ -157,7 +159,7 @@ export default function RegisterPage() {
 
           <div className="mt-8 space-y-3">
             <p className="text-xs text-slate-400">
-              Didn't receive it? Check your spam folder.
+              If you already have an account, you can also try signing in.
             </p>
             <button
               onClick={() => setEmailSent(false)}
@@ -171,7 +173,6 @@ export default function RegisterPage() {
     );
   }
 
-  // ── Register Form ──────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6 transition-colors duration-500">
       <Link
@@ -201,9 +202,11 @@ export default function RegisterPage() {
           >
             <Zap className="text-white fill-white" size={32} />
           </motion.div>
+
           <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">
             Join InstaWeb
           </h1>
+
           <p className="text-slate-500 dark:text-slate-400 mt-2">
             Start your 14-day Pro trial — no card needed
           </p>
@@ -221,6 +224,7 @@ export default function RegisterPage() {
           )}
 
           <OAuthButtons mode="register" />
+
           <Divider />
 
           <form onSubmit={handleRegister} className="space-y-4">
@@ -260,6 +264,7 @@ export default function RegisterPage() {
                 disabled={loading}
                 {...getFieldProps("password")}
               />
+
               <PasswordStrengthBar
                 password={values.password}
                 show={touched.password || values.password.length > 0}
@@ -274,8 +279,8 @@ export default function RegisterPage() {
             >
               {loading ? (
                 <>
-                  <Loader2 size={18} className="animate-spin" /> Creating
-                  account...
+                  <Loader2 size={18} className="animate-spin" />
+                  Creating account...
                 </>
               ) : (
                 "Create Account"

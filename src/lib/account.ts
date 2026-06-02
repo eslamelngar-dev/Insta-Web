@@ -5,6 +5,7 @@ import {
   NotFoundError,
 } from "@/lib/errors";
 import { createClient } from "@/lib/supabase-server";
+import { canProvisionUser, ensureUserWorkspace } from "@/lib/user-workspace";
 
 export type AccountRole = "owner" | "admin" | "editor" | "viewer";
 
@@ -33,13 +34,6 @@ interface MembershipRow {
   created_at: string;
 }
 
-interface AccountRow {
-  id: string;
-  name: string;
-  slug: string | null;
-  created_at: string;
-}
-
 export async function requireAccount(): Promise<AccountContext> {
   const supabase = await createClient();
 
@@ -51,6 +45,15 @@ export async function requireAccount(): Promise<AccountContext> {
   if (authError || !user) {
     throw new AppError({ code: ErrorCode.UNAUTHORIZED });
   }
+
+  if (!canProvisionUser(user)) {
+    throw new AppError({
+      code: ErrorCode.UNAUTHORIZED,
+      message: "Email verification required.",
+    });
+  }
+
+  await ensureUserWorkspace(user);
 
   const { data: membershipData, error: membershipError } = await supabase
     .from("account_members")
@@ -153,7 +156,12 @@ export async function getUserAccounts(userId: string) {
     });
   }
 
-  const accounts = (accountsData ?? []) as AccountRow[];
+  const accounts = (accountsData ?? []) as {
+    id: string;
+    name: string;
+    slug: string | null;
+    created_at: string;
+  }[];
 
   const accountMap = new Map(accounts.map((account) => [account.id, account]));
 

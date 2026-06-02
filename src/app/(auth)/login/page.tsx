@@ -33,19 +33,24 @@ export default function LoginPage() {
   } = useAuthForm({ email: "", password: "" });
 
   useEffect(() => {
-    if (errorParam) toast.error(decodeURIComponent(errorParam));
+    if (errorParam) {
+      toast.error(decodeURIComponent(errorParam));
+    }
   }, [errorParam]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const result = loginSchema.safeParse(values);
+
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
+
       result.error.issues.forEach((issue) => {
         const key = issue.path[0] as string;
         if (!fieldErrors[key]) fieldErrors[key] = issue.message;
       });
+
       setErrors(fieldErrors);
       Object.keys(values).forEach((k) => markTouched(k));
       return;
@@ -62,20 +67,18 @@ export default function LoginPage() {
 
       if (error) {
         if (error.message.includes("Invalid login credentials")) {
-          setGeneralError(
-            "Invalid email or password. Please check and try again.",
-          );
+          setGeneralError("Invalid email or password.");
         } else if (error.message.includes("Email not confirmed")) {
-          setGeneralError("Please verify your email first. Check your inbox.");
+          setGeneralError("Please verify your email before continuing.");
         } else {
-          setGeneralError(error.message);
+          setGeneralError("Unable to sign in right now. Please try again.");
         }
         setLoading(false);
         return;
       }
 
       toast.success("Welcome back!");
-      router.push(redirectTo);
+      router.replace(redirectTo);
       router.refresh();
     } catch {
       setGeneralError("Something went wrong. Please try again.");
@@ -98,7 +101,6 @@ export default function LoginPage() {
         transition={{ duration: 0.4, ease: "easeOut" }}
         className="w-full max-w-md"
       >
-        {/* Header */}
         <div className="text-center mb-8">
           <motion.div
             initial={{ scale: 0 }}
@@ -113,17 +115,17 @@ export default function LoginPage() {
           >
             <Zap className="text-white fill-white" size={32} />
           </motion.div>
+
           <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">
             Welcome Back
           </h1>
+
           <p className="text-slate-500 dark:text-slate-400 mt-2">
             Log in to manage your sites
           </p>
         </div>
 
-        {/* Card */}
         <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 p-8 rounded-4xl shadow-sm space-y-6">
-          {/* General Error */}
           {generalError && (
             <motion.div
               initial={{ opacity: 0, y: -8 }}
@@ -134,7 +136,8 @@ export default function LoginPage() {
             </motion.div>
           )}
 
-          <OAuthButtons mode="login" />
+          <OAuthButtons mode="login" redirectToPath={redirectTo} />
+
           <Divider />
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -179,7 +182,8 @@ export default function LoginPage() {
             >
               {loading ? (
                 <>
-                  <Loader2 size={18} className="animate-spin" /> Signing in...
+                  <Loader2 size={18} className="animate-spin" />
+                  Signing in...
                 </>
               ) : (
                 "Sign In"

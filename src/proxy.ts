@@ -146,7 +146,9 @@ export async function proxy(request: NextRequest) {
 
   const fullPath = `${pathname}${request.nextUrl.search}`;
   const needsAuth =
-    pathname.startsWith("/dashboard") || pathname.startsWith("/admin");
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/onboarding");
 
   if (needsAuth && (!user || error)) {
     const loginUrl = new URL("/login", request.url);

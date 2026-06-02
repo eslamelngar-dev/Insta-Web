@@ -180,7 +180,7 @@ export default function OnboardingPage() {
             />
           </motion.div>
           <h1 className="text-2xl font-black text-slate-900 dark:text-white mb-3">
-            You're all set! 🎉
+            You're all set!
           </h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm">
             Taking you to your dashboard...

@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Zap, Lock, Loader2, CheckCircle2 } from "lucide-react";
+import { Zap, Lock, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { resetPasswordSchema } from "@/lib/validations/auth";
@@ -14,6 +15,8 @@ import { useRouter } from "next/navigation";
 export default function ResetPasswordPage() {
   const router = useRouter();
   const [success, setSuccess] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
 
   const {
     values,
@@ -26,18 +29,120 @@ export default function ResetPasswordPage() {
     setErrors,
     getFieldProps,
     markTouched,
-  } = useAuthForm({ password: "", confirmPassword: "" });
+  } = useAuthForm({
+    password: "",
+    confirmPassword: "",
+  });
+
+  useEffect(() => {
+    let mounted = true;
+
+    const setupRecoverySession = async () => {
+      try {
+        const hash = window.location.hash.startsWith("#")
+          ? window.location.hash.slice(1)
+          : "";
+
+        const params = new URLSearchParams(hash);
+        const accessToken = params.get("access_token");
+        const refreshToken = params.get("refresh_token");
+        const type = params.get("type");
+
+        if (type === "recovery" && accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (error) {
+            if (mounted) {
+              setLinkError(
+                "This password reset link is invalid or has expired.",
+              );
+            }
+            return;
+          }
+
+          window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname + window.location.search,
+          );
+
+          if (mounted) {
+            setSessionReady(true);
+            setLinkError(null);
+          }
+
+          return;
+        }
+
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (session) {
+          if (mounted) {
+            setSessionReady(true);
+            setLinkError(null);
+          }
+          return;
+        }
+
+        if (mounted) {
+          setLinkError("This password reset link is invalid or has expired.");
+        }
+      } catch {
+        if (mounted) {
+          setLinkError("This password reset link is invalid or has expired.");
+        }
+      }
+    };
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
+
+      if (
+        (event === "PASSWORD_RECOVERY" ||
+          event === "SIGNED_IN" ||
+          event === "TOKEN_REFRESHED") &&
+        session
+      ) {
+        setSessionReady(true);
+        setLinkError(null);
+      }
+    });
+
+    setupRecoverySession();
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!sessionReady) {
+      setGeneralError(
+        "Your reset session is missing or expired. Please request a new link.",
+      );
+      return;
+    }
+
     const result = resetPasswordSchema.safeParse(values);
+
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
+
       result.error.issues.forEach((issue) => {
         const key = issue.path[0] as string;
         if (!fieldErrors[key]) fieldErrors[key] = issue.message;
       });
+
       setErrors(fieldErrors);
       Object.keys(values).forEach((k) => markTouched(k));
       return;
@@ -52,17 +157,20 @@ export default function ResetPasswordPage() {
       });
 
       if (error) {
-        setGeneralError(error.message);
+        setGeneralError(
+          "Unable to reset your password. Please request a new reset link.",
+        );
         setLoading(false);
         return;
       }
 
       setSuccess(true);
       toast.success("Password updated successfully!");
+
       setTimeout(() => {
-        router.push("/dashboard");
+        router.replace("/dashboard");
         router.refresh();
-      }, 2000);
+      }, 1500);
     } catch {
       setGeneralError("Something went wrong. Please try again.");
       setLoading(false);
@@ -75,7 +183,7 @@ export default function ResetPasswordPage() {
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="text-center"
+          className="w-full max-w-md text-center"
         >
           <motion.div
             initial={{ scale: 0 }}
@@ -88,10 +196,68 @@ export default function ResetPasswordPage() {
               className="text-emerald-600 dark:text-emerald-400"
             />
           </motion.div>
+
           <h1 className="text-2xl font-black text-slate-900 dark:text-white mb-3">
-            Password Updated!
+            Password Updated
           </h1>
-          <p className="text-slate-500 text-sm">Redirecting to dashboard...</p>
+
+          <p className="text-slate-500 dark:text-slate-400 text-sm">
+            Redirecting you now...
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (linkError) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-md text-center"
+        >
+          <div className="w-20 h-20 bg-red-100 dark:bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-8">
+            <AlertCircle size={42} className="text-red-600 dark:text-red-400" />
+          </div>
+
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white mb-3">
+            Invalid Reset Link
+          </h1>
+
+          <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed max-w-sm mx-auto mb-8">
+            {linkError}
+          </p>
+
+          <Link
+            href="/forgot-password"
+            className="inline-flex items-center justify-center px-5 py-3 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-500 transition-all"
+          >
+            Request a New Link
+          </Link>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (!sessionReady) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="w-full max-w-md text-center"
+        >
+          <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-indigo-600/20">
+            <Zap className="text-white fill-white" size={32} />
+          </div>
+
+          <div className="flex items-center justify-center gap-3 text-slate-600 dark:text-slate-300">
+            <Loader2 size={18} className="animate-spin" />
+            <span className="text-sm font-bold">
+              Verifying your reset link...
+            </span>
+          </div>
         </motion.div>
       </div>
     );
@@ -108,11 +274,13 @@ export default function ResetPasswordPage() {
           <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-indigo-600/20">
             <Zap className="text-white fill-white" size={32} />
           </div>
+
           <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">
             New Password
           </h1>
+
           <p className="text-slate-500 dark:text-slate-400 mt-2">
-            Choose a strong password
+            Choose a strong password for your account
           </p>
         </div>
 
@@ -140,6 +308,7 @@ export default function ResetPasswordPage() {
                 disabled={loading}
                 {...getFieldProps("password")}
               />
+
               <PasswordStrengthBar
                 password={values.password}
                 show={touched.password || values.password.length > 0}
@@ -166,7 +335,8 @@ export default function ResetPasswordPage() {
             >
               {loading ? (
                 <>
-                  <Loader2 size={18} className="animate-spin" /> Updating...
+                  <Loader2 size={18} className="animate-spin" />
+                  Updating...
                 </>
               ) : (
                 "Update Password"
