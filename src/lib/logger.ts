@@ -11,13 +11,12 @@ const isDev = process.env.NODE_ENV === "development";
 const isProd = process.env.NODE_ENV === "production";
 
 function formatLog(entry: LogEntry): string {
-  // Dev: قابل للقراءة
   if (isDev) {
     const colors = {
-      debug: "\x1b[90m", // gray
-      info: "\x1b[36m", // cyan
-      warn: "\x1b[33m", // yellow
-      error: "\x1b[31m", // red
+      debug: "\x1b[90m",
+      info: "\x1b[36m",
+      warn: "\x1b[33m",
+      error: "\x1b[31m",
     };
     const reset = "\x1b[0m";
     const color = colors[entry.level];
@@ -25,12 +24,10 @@ function formatLog(entry: LogEntry): string {
     return `${color}[${entry.level.toUpperCase()}]${reset} ${entry.message}${data}`;
   }
 
-  // Prod: JSON للـ log aggregation tools
   return JSON.stringify(entry);
 }
 
 function log(level: LogLevel, message: string, data?: Record<string, unknown>) {
-  // في الـ production، نخفي debug logs
   if (isProd && level === "debug") return;
 
   const entry: LogEntry = {
@@ -52,7 +49,6 @@ function log(level: LogLevel, message: string, data?: Record<string, unknown>) {
       break;
     case "error":
       console.error(formatted);
-      // TODO: هنا نضيف Sentry.captureException أو Axiom
       break;
   }
 }

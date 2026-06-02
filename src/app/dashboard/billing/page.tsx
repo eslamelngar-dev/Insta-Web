@@ -29,6 +29,7 @@ import {
 import type { Plan } from "@/lib/plans";
 
 const PUBLIC_PLANS = listPublicPlans();
+
 const ACTIVE_SUBSCRIPTION_STATUSES = new Set([
   "active",
   "trialing",
@@ -39,28 +40,37 @@ const ACTIVE_SUBSCRIPTION_STATUSES = new Set([
 type PaidPlan = Exclude<Plan, "free">;
 type BillingAction = PaidPlan | "portal" | "sync" | null;
 
+interface BillingState {
+  accountId: string | null;
+  accountPlan: Plan;
+  trialEndsAt: string | null;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+  subscriptionStatus: string | null;
+  subscriptionCurrentPeriodEnd: string | null;
+  subscriptionCancelAtPeriodEnd: boolean;
+  canManageBilling: boolean;
+}
+
+const DEFAULT_BILLING_STATE: BillingState = {
+  accountId: null,
+  accountPlan: "free",
+  trialEndsAt: null,
+  stripeCustomerId: null,
+  stripeSubscriptionId: null,
+  subscriptionStatus: null,
+  subscriptionCurrentPeriodEnd: null,
+  subscriptionCancelAtPeriodEnd: false,
+  canManageBilling: false,
+};
+
 export default function BillingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<BillingAction>(null);
-
-  const [accountPlan, setAccountPlan] = useState<Plan>("free");
-  const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
-
-  const [stripeCustomerId, setStripeCustomerId] = useState<string | null>(null);
-  const [stripeSubscriptionId, setStripeSubscriptionId] = useState<
-    string | null
-  >(null);
-  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(
-    null,
-  );
-  const [subscriptionCurrentPeriodEnd, setSubscriptionCurrentPeriodEnd] =
-    useState<string | null>(null);
-  const [subscriptionCancelAtPeriodEnd, setSubscriptionCancelAtPeriodEnd] =
-    useState(false);
-  const [canManageBilling, setCanManageBilling] = useState(false);
+  const [billing, setBilling] = useState<BillingState>(DEFAULT_BILLING_STATE);
 
   const syncedSessionRef = useRef<string | null>(null);
   const handledCanceledRef = useRef(false);
@@ -91,30 +101,31 @@ export default function BillingPage() {
       return;
     }
 
-    setCanManageBilling(
-      membership.role === "owner" || membership.role === "admin",
-    );
+    const canManageBilling =
+      membership.role === "owner" || membership.role === "admin";
 
     const { data: account } = await supabase
       .from("accounts")
       .select(
-        "plan, trial_ends_at, stripe_customer_id, stripe_subscription_id, subscription_status, subscription_current_period_end, subscription_cancel_at_period_end",
+        "id, plan, trial_ends_at, stripe_customer_id, stripe_subscription_id, subscription_status, subscription_current_period_end, subscription_cancel_at_period_end",
       )
       .eq("id", membership.account_id)
       .single();
 
     if (account) {
-      setAccountPlan(normalizePlan(account.plan));
-      setTrialEndsAt(account.trial_ends_at ?? null);
-      setStripeCustomerId(account.stripe_customer_id ?? null);
-      setStripeSubscriptionId(account.stripe_subscription_id ?? null);
-      setSubscriptionStatus(account.subscription_status ?? null);
-      setSubscriptionCurrentPeriodEnd(
-        account.subscription_current_period_end ?? null,
-      );
-      setSubscriptionCancelAtPeriodEnd(
-        account.subscription_cancel_at_period_end ?? false,
-      );
+      setBilling({
+        accountId: account.id,
+        accountPlan: normalizePlan(account.plan),
+        trialEndsAt: account.trial_ends_at ?? null,
+        stripeCustomerId: account.stripe_customer_id ?? null,
+        stripeSubscriptionId: account.stripe_subscription_id ?? null,
+        subscriptionStatus: account.subscription_status ?? null,
+        subscriptionCurrentPeriodEnd:
+          account.subscription_current_period_end ?? null,
+        subscriptionCancelAtPeriodEnd:
+          account.subscription_cancel_at_period_end ?? false,
+        canManageBilling,
+      });
     }
 
     setLoading(false);
@@ -169,42 +180,52 @@ export default function BillingPage() {
   }, [searchParams, fetchBilling, router]);
 
   const trialActive = useMemo(
-    () => isTrialActive(accountPlan, trialEndsAt),
-    [accountPlan, trialEndsAt],
+    () => isTrialActive(billing.accountPlan, billing.trialEndsAt),
+    [billing.accountPlan, billing.trialEndsAt],
   );
 
   const effectivePlan = useMemo(
-    () => resolveEffectivePlan(accountPlan, trialEndsAt),
-    [accountPlan, trialEndsAt],
+    () => resolveEffectivePlan(billing.accountPlan, billing.trialEndsAt),
+    [billing.accountPlan, billing.trialEndsAt],
   );
 
   const trialDaysLeft = useMemo(() => {
-    if (!trialEndsAt) return 0;
-    const diff = new Date(trialEndsAt).getTime() - Date.now();
+    if (!billing.trialEndsAt) return 0;
+    const diff = new Date(billing.trialEndsAt).getTime() - Date.now();
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-  }, [trialEndsAt]);
+  }, [billing.trialEndsAt]);
 
   const hasActiveStripeSubscription = useMemo(() => {
     return Boolean(
-      stripeCustomerId &&
-      stripeSubscriptionId &&
-      subscriptionStatus &&
-      ACTIVE_SUBSCRIPTION_STATUSES.has(subscriptionStatus),
-    );
-  }, [stripeCustomerId, stripeSubscriptionId, subscriptionStatus]);
-
-  const paidPlanManagedExternally = useMemo(() => {
-    return (
-      accountPlan !== "free" &&
-      !trialActive &&
-      !hasActiveStripeSubscription &&
-      !stripeSubscriptionId
+      billing.stripeCustomerId &&
+      billing.stripeSubscriptionId &&
+      billing.subscriptionStatus &&
+      ACTIVE_SUBSCRIPTION_STATUSES.has(billing.subscriptionStatus),
     );
   }, [
-    accountPlan,
+    billing.stripeCustomerId,
+    billing.stripeSubscriptionId,
+    billing.subscriptionStatus,
+  ]);
+
+  // الـ plan مدفوع بس مش عن طريق Stripe خالص
+  // يعني لا عنده customer ولا subscription نشط
+  const paidPlanManagedExternally = useMemo(() => {
+    const hasAnyStripeHistory =
+      !!billing.stripeCustomerId || !!billing.stripeSubscriptionId;
+
+    return (
+      billing.accountPlan !== "free" &&
+      !trialActive &&
+      !hasActiveStripeSubscription &&
+      !hasAnyStripeHistory
+    );
+  }, [
+    billing.accountPlan,
+    billing.stripeCustomerId,
+    billing.stripeSubscriptionId,
     trialActive,
     hasActiveStripeSubscription,
-    stripeSubscriptionId,
   ]);
 
   const handleCheckout = async (plan: PaidPlan) => {
@@ -213,9 +234,7 @@ export default function BillingPage() {
     try {
       const response = await fetch("/api/stripe/checkout", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plan }),
       });
 
@@ -270,14 +289,14 @@ export default function BillingPage() {
   };
 
   const formattedPeriodEnd = useMemo(() => {
-    if (!subscriptionCurrentPeriodEnd) return null;
+    if (!billing.subscriptionCurrentPeriodEnd) return null;
 
     return new Intl.DateTimeFormat("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
-    }).format(new Date(subscriptionCurrentPeriodEnd));
-  }, [subscriptionCurrentPeriodEnd]);
+    }).format(new Date(billing.subscriptionCurrentPeriodEnd));
+  }, [billing.subscriptionCurrentPeriodEnd]);
 
   if (loading || actionLoading === "sync") {
     return (
@@ -300,7 +319,7 @@ export default function BillingPage() {
             </p>
           </div>
 
-          {canManageBilling && stripeCustomerId && (
+          {billing.canManageBilling && billing.stripeCustomerId && (
             <button
               onClick={handlePortal}
               disabled={actionLoading === "portal"}
@@ -327,7 +346,7 @@ export default function BillingPage() {
             <>
               <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-2 text-xs font-black uppercase tracking-widest">
                 <span className="w-2 h-2 rounded-full bg-slate-400" />
-                Base Plan: {getPlanLabel(accountPlan)}
+                Base Plan: {getPlanLabel(billing.accountPlan)}
               </div>
 
               <div className="inline-flex items-center gap-2 rounded-full border border-indigo-200 dark:border-indigo-500/20 bg-indigo-50 dark:bg-indigo-500/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
@@ -338,21 +357,21 @@ export default function BillingPage() {
             </>
           )}
 
-          {subscriptionStatus && (
+          {billing.subscriptionStatus && (
             <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-2 text-xs font-black uppercase tracking-widest">
               <span className="w-2 h-2 rounded-full bg-indigo-500" />
-              Stripe Status: {subscriptionStatus}
+              Stripe Status: {billing.subscriptionStatus}
             </div>
           )}
         </div>
 
-        {subscriptionCancelAtPeriodEnd && formattedPeriodEnd && (
+        {billing.subscriptionCancelAtPeriodEnd && formattedPeriodEnd && (
           <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
             Your subscription will end on {formattedPeriodEnd}.
           </div>
         )}
 
-        {!canManageBilling && (
+        {!billing.canManageBilling && (
           <div className="mt-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-3 text-sm font-semibold text-slate-600 dark:text-slate-300">
             Only workspace owners and admins can manage billing.
           </div>
@@ -361,7 +380,7 @@ export default function BillingPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
         {PUBLIC_PLANS.map((plan) => {
-          const isBasePlanCard = trialActive && plan.id === accountPlan;
+          const isBasePlanCard = trialActive && plan.id === billing.accountPlan;
           const isTrialAccessCard = trialActive && plan.id === effectivePlan;
           const isCurrentPlanCard = !trialActive && plan.id === effectivePlan;
 
@@ -391,7 +410,7 @@ export default function BillingPage() {
             disabled = true;
             buttonClass =
               "bg-slate-100 dark:bg-slate-900 text-slate-400 cursor-not-allowed";
-          } else if (!canManageBilling) {
+          } else if (!billing.canManageBilling) {
             buttonLabel = "Admins Only";
             disabled = true;
             buttonClass =

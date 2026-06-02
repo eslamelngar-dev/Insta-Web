@@ -64,6 +64,30 @@ export async function syncAccountFromSubscription(
   subscription: Stripe.Subscription,
   fallbackAccountId?: string | null,
 ): Promise<StripeSyncResult> {
+  // لو الـ status canceled، نعمل clear مباشرة
+  if (subscription.status === "canceled") {
+    const periodEnd = getSubscriptionPeriodEnd(subscription);
+    const customerId = getStripeCustomerId(subscription.customer);
+    let accountId =
+      subscription.metadata.account_id || fallbackAccountId || null;
+
+    if (!accountId && customerId) {
+      accountId = await findAccountIdByStripeCustomerId(customerId);
+    }
+
+    if (!accountId) {
+      accountId = await findAccountIdByStripeSubscriptionId(subscription.id);
+    }
+
+    return clearAccountSubscription({
+      accountId,
+      customerId,
+      subscriptionId: subscription.id,
+      status: subscription.status,
+      currentPeriodEnd: periodEnd,
+    });
+  }
+
   const customerId = getStripeCustomerId(subscription.customer);
   let accountId = subscription.metadata.account_id || fallbackAccountId || null;
 
@@ -173,6 +197,7 @@ export async function clearAccountSubscription(input: {
         : null,
       subscription_cancel_at_period_end: false,
       plan: "free",
+      trial_ends_at: null,
     })
     .eq("id", accountId);
 

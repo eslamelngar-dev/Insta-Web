@@ -1,92 +1,201 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect } from "react";
 import { motion } from "framer-motion";
-import { Zap, Mail, Lock, ArrowLeft } from "lucide-react"; // شلنا Github من هنا
+import { Zap, Mail, Lock, ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-
-const GithubIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.28 1.15-.28 2.35 0 3.5-.73 1.02-1.08 2.25-1 3.5 0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
-    <path d="M9 18c-4.51 2-4.51-2-7-2" />
-  </svg>
-);
+import { loginSchema } from "@/lib/validations/auth";
+import { useAuthForm } from "@/hooks/auth/useAuthForm";
+import { AuthInput } from "@/components/auth/AuthInput";
+import { OAuthButtons } from "@/components/auth/OAuthButtons";
+import { Divider } from "@/components/auth/Divider";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirectTo") || "/dashboard";
+  const errorParam = searchParams.get("error");
+
+  const {
+    values,
+    errors,
+    touched,
+    loading,
+    generalError,
+    setLoading,
+    setGeneralError,
+    setErrors,
+    getFieldProps,
+    markTouched,
+  } = useAuthForm({ email: "", password: "" });
+
+  useEffect(() => {
+    if (errorParam) toast.error(decodeURIComponent(errorParam));
+  }, [errorParam]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success("Welcome back!");
-      router.push("/dashboard");
+    const result = loginSchema.safeParse(values);
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.issues.forEach((issue) => {
+        const key = issue.path[0] as string;
+        if (!fieldErrors[key]) fieldErrors[key] = issue.message;
+      });
+      setErrors(fieldErrors);
+      Object.keys(values).forEach((k) => markTouched(k));
+      return;
     }
-    setLoading(false);
+
+    setLoading(true);
+    setGeneralError(null);
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: result.data.email,
+        password: result.data.password,
+      });
+
+      if (error) {
+        if (error.message.includes("Invalid login credentials")) {
+          setGeneralError(
+            "Invalid email or password. Please check and try again.",
+          );
+        } else if (error.message.includes("Email not confirmed")) {
+          setGeneralError("Please verify your email first. Check your inbox.");
+        } else {
+          setGeneralError(error.message);
+        }
+        setLoading(false);
+        return;
+      }
+
+      toast.success("Welcome back!");
+      router.push(redirectTo);
+      router.refresh();
+    } catch {
+      setGeneralError("Something went wrong. Please try again.");
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6 transition-colors duration-500">
-      <Link href="/" className="absolute top-8 left-8 flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors">
+      <Link
+        href="/"
+        className="absolute top-8 left-8 flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors"
+      >
         <ArrowLeft size={16} /> Back
       </Link>
 
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-md">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        className="w-full max-w-md"
+      >
+        {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-indigo-600/20">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{
+              type: "spring",
+              stiffness: 400,
+              damping: 15,
+              delay: 0.1,
+            }}
+            className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-indigo-600/20"
+          >
             <Zap className="text-white fill-white" size={32} />
-          </div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Welcome Back</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-2">Log in to manage your sites.</p>
+          </motion.div>
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">
+            Welcome Back
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-2">
+            Log in to manage your sites
+          </p>
         </div>
 
-        <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 p-8 rounded-[2.5rem] shadow-sm space-y-6">
-          <button className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-950 rounded-2xl font-black text-sm flex items-center justify-center gap-3 hover:opacity-90 transition-all">
-            <GithubIcon />
-            Continue with GitHub
-          </button>
+        {/* Card */}
+        <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 p-8 rounded-4xl shadow-sm space-y-6">
+          {/* General Error */}
+          {generalError && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl px-4 py-3 text-sm text-red-600 dark:text-red-400 font-medium"
+            >
+              {generalError}
+            </motion.div>
+          )}
 
-          <div className="relative flex items-center justify-center">
-            <div className="w-full h-px bg-slate-200 dark:bg-white/5"></div>
-            <span className="absolute bg-white dark:bg-slate-950 px-4 text-[10px] text-slate-400 font-black uppercase tracking-widest">Or email</span>
-          </div>
+          <OAuthButtons mode="login" />
+          <Divider />
 
           <form onSubmit={handleLogin} className="space-y-4">
-            <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input 
-                type="email" required placeholder="Email Address" value={email} onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-xl pl-12 pr-5 py-4 text-sm outline-none focus:border-indigo-500 transition-all text-slate-900 dark:text-white" 
-              />
+            <AuthInput
+              icon={Mail}
+              type="email"
+              placeholder="Email address"
+              autoComplete="email"
+              error={errors.email}
+              touched={touched.email}
+              required
+              disabled={loading}
+              {...getFieldProps("email")}
+            />
+
+            <AuthInput
+              icon={Lock}
+              type="password"
+              placeholder="Password"
+              autoComplete="current-password"
+              error={errors.password}
+              touched={touched.password}
+              required
+              disabled={loading}
+              {...getFieldProps("password")}
+            />
+
+            <div className="flex justify-end">
+              <Link
+                href="/forgot-password"
+                className="text-xs font-bold text-indigo-600 hover:text-indigo-500 transition-colors"
+              >
+                Forgot password?
+              </Link>
             </div>
 
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input 
-                type="password" required placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-xl pl-12 pr-5 py-4 text-sm outline-none focus:border-indigo-500 transition-all text-slate-900 dark:text-white"
-              />
-            </div>
-
-            <button disabled={loading} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 transition-all disabled:opacity-50">
-              {loading ? "Signing in..." : "Sign In"}
-            </button>
+            <motion.button
+              whileHover={{ scale: loading ? 1 : 1.01 }}
+              whileTap={{ scale: loading ? 1 : 0.98 }}
+              disabled={loading}
+              className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" /> Signing in...
+                </>
+              ) : (
+                "Sign In"
+              )}
+            </motion.button>
           </form>
         </div>
-        
+
         <p className="text-center mt-8 text-sm text-slate-500">
-          Don't have an account? <Link href="/register" className="text-indigo-600 font-bold hover:underline">Create one</Link>
+          Don't have an account?{" "}
+          <Link
+            href="/register"
+            className="text-indigo-600 font-bold hover:underline"
+          >
+            Create one
+          </Link>
         </p>
       </motion.div>
     </div>

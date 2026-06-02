@@ -19,6 +19,24 @@ function getSubscriptionPeriodEnd(
   return item.current_period_end ?? null;
 }
 
+async function handleSubscriptionSync(
+  subscription: Stripe.Subscription,
+  fallbackAccountId?: string | null,
+) {
+  if (subscription.status === "canceled") {
+    const periodEnd = getSubscriptionPeriodEnd(subscription);
+    return clearAccountSubscription({
+      accountId: subscription.metadata.account_id || fallbackAccountId || null,
+      customerId: getStripeCustomerId(subscription.customer),
+      subscriptionId: subscription.id,
+      status: subscription.status,
+      currentPeriodEnd: periodEnd,
+    });
+  }
+
+  return syncAccountFromSubscription(subscription, fallbackAccountId);
+}
+
 export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
 
@@ -61,7 +79,7 @@ export async function POST(request: Request) {
               ? await stripe.subscriptions.retrieve(session.subscription)
               : session.subscription;
 
-          await syncAccountFromSubscription(
+          await handleSubscriptionSync(
             subscription,
             session.metadata?.account_id ?? session.client_reference_id ?? null,
           );
@@ -73,7 +91,7 @@ export async function POST(request: Request) {
       case "customer.subscription.created":
       case "customer.subscription.updated": {
         const subscription = event.data.object as Stripe.Subscription;
-        await syncAccountFromSubscription(subscription);
+        await handleSubscriptionSync(subscription);
         break;
       }
 
@@ -89,6 +107,13 @@ export async function POST(request: Request) {
           currentPeriodEnd: periodEnd,
         });
 
+        break;
+      }
+
+      case "invoice.paid":
+      case "invoice.payment_succeeded": {
+        const invoice = event.data.object as Stripe.Invoice;
+        await syncAccountFromInvoice(invoice);
         break;
       }
 

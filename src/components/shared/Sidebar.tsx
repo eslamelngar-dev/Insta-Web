@@ -63,7 +63,9 @@ export default function Sidebar({ isAdmin = false }: SidebarProps) {
     ] as const;
   }, [isAdmin]);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -144,9 +146,16 @@ export default function Sidebar({ isAdmin = false }: SidebarProps) {
     setIsSigningOut(true);
 
     try {
-      const { error } = await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut({
+        scope: "local",
+      });
+
       if (error) throw error;
-      router.push("/login");
+
+      toast.success("Signed out successfully");
+      setMobileOpen(false);
+      router.replace("/login");
+      router.refresh();
     } catch {
       toast.error("Failed to sign out. Please try again.");
       setIsSigningOut(false);
