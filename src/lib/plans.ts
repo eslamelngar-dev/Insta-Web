@@ -49,7 +49,7 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
   pro: {
     id: "pro",
     name: "Pro",
-    monthlyPrice: 19,
+    monthlyPrice: 9,
     description: "For professionals who need more flexibility and control.",
     features: [
       "Unlimited Websites",
@@ -75,7 +75,7 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
   business: {
     id: "business",
     name: "Business",
-    monthlyPrice: 49,
+    monthlyPrice: 29,
     description:
       "For teams and businesses managing multiple brands or clients.",
     features: [
@@ -93,7 +93,7 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
       premiumTemplates: true,
       teamMembers: 25,
     },
-    public: false,
+    public: true,
   },
 };
 

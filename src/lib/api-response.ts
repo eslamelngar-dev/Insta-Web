@@ -59,6 +59,19 @@ type DynamicHandlerFn<TParams extends RouteParams> = (
   context: RouteContext<TParams>,
 ) => Promise<HandlerResponse>;
 
+function isSupabaseLikeError(
+  error: unknown,
+): error is { code?: string; message?: string } {
+  if (!error || typeof error !== "object") return false;
+
+  const code =
+    "code" in error && typeof error.code === "string" ? error.code : "";
+
+  if (!code) return false;
+
+  return code.startsWith("PGRST") || /^[0-9A-Z]{5}$/.test(code);
+}
+
 export function withApiHandler(handler: StaticHandlerFn): StaticHandlerFn;
 export function withApiHandler<TParams extends RouteParams>(
   handler: DynamicHandlerFn<TParams>,
@@ -113,12 +126,7 @@ export function withApiHandler<TParams extends RouteParams>(
         return res;
       }
 
-      if (
-        error !== null &&
-        typeof error === "object" &&
-        "code" in error &&
-        "message" in error
-      ) {
+      if (isSupabaseLikeError(error)) {
         const normalized = normalizeSupabaseError(
           error as { code: string; message: string },
         );
