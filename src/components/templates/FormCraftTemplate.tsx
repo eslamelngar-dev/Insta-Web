@@ -3,7 +3,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { Send } from "lucide-react";
+import { Send, ChevronDown } from "lucide-react";
 import { TemplateProps, SiteData, SiteContent } from "@/types";
 import type { FormConfig } from "@/types/editor";
 import DynamicContactForm from "@/components/DynamicContactForm";
@@ -235,20 +235,42 @@ function PreviewFormFields({
                 <span style={{ color: "#ef4444", marginLeft: 4 }}>*</span>
               )}
             </label>
-            <div
-              style={{
-                padding: "14px 16px",
-                borderRadius: 12,
-                fontSize: 14,
-                fontWeight: 500,
-                backgroundColor: fieldBg,
-                border: `1px solid ${cardBorder}`,
-                color: textMuted,
-                minHeight: field.type === "textarea" ? 120 : undefined,
-              }}
-            >
-              {field.placeholder}
-            </div>
+
+            {field.type === "select" ? (
+              <div
+                className="flex items-center justify-between"
+                style={{
+                  padding: "14px 16px",
+                  borderRadius: 12,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  backgroundColor: fieldBg,
+                  border: `1px solid ${cardBorder}`,
+                  color: textMuted,
+                }}
+              >
+                <span>{field.placeholder}</span>
+                <ChevronDown
+                  size={16}
+                  style={{ color: textMuted, opacity: 0.6 }}
+                />
+              </div>
+            ) : (
+              <div
+                style={{
+                  padding: "14px 16px",
+                  borderRadius: 12,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  backgroundColor: fieldBg,
+                  border: `1px solid ${cardBorder}`,
+                  color: textMuted,
+                  minHeight: field.type === "textarea" ? 120 : undefined,
+                }}
+              >
+                {field.placeholder}
+              </div>
+            )}
           </div>
         ))}
       </div>

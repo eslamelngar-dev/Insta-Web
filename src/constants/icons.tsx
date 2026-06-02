@@ -8,7 +8,21 @@ import {
   Layout,
   MessageCircle,
   Play,
+  User,
+  Smartphone,
+  MessageSquare,
+  Cake,
+  Building2,
+  Link,
+  DollarSign,
+  SearchCheck,
+  Users,
+  Briefcase,
+  HelpCircle,
+  type LucideProps,
 } from "lucide-react";
+import React from "react";
+import type { ReactNode } from "react";
 
 export const Icons: Record<string, React.FC<React.SVGProps<SVGSVGElement>>> = {
   x: (p) => (
@@ -48,6 +62,7 @@ export const Icons: Record<string, React.FC<React.SVGProps<SVGSVGElement>>> = {
   ),
 };
 
+
 export const ButtonIcons: Record<string, LucideIcon> = {
   globe: Globe,
   mail: Mail,
@@ -58,3 +73,29 @@ export const ButtonIcons: Record<string, LucideIcon> = {
   chat: MessageCircle,
   play: Play,
 };
+
+const FIELD_ICON_MAP: Record<string, React.ComponentType<LucideProps>> = {
+  User,
+  Mail,
+  Smartphone,
+  MessageSquare,
+  Globe,
+  Cake,
+  Building2,
+  Link,
+  DollarSign,
+  SearchCheck,
+  Users,
+  Briefcase,
+};
+
+export function getFieldIcon(
+  iconName: string,
+  size: number = 16,
+  color?: string,
+): ReactNode {
+  const IconComponent = FIELD_ICON_MAP[iconName] || HelpCircle;
+  return <IconComponent size={size} style={color ? { color } : undefined} />;
+}
+
+export { FIELD_ICON_MAP };

@@ -3,7 +3,7 @@ import type { FormFieldType } from "@/types/editor";
 export interface FieldPreset {
   type: FormFieldType;
   label: string;
-  icon: string;
+  iconName: string;
   color: string;
   placeholder: string;
   width: "full" | "half";
@@ -14,7 +14,7 @@ export const FIELD_PRESETS: FieldPreset[] = [
   {
     type: "text",
     label: "Full Name",
-    icon: "👤",
+    iconName: "User",
     color: "#6366f1",
     placeholder: "John Doe",
     width: "half",
@@ -22,7 +22,7 @@ export const FIELD_PRESETS: FieldPreset[] = [
   {
     type: "email",
     label: "Email",
-    icon: "✉️",
+    iconName: "Mail",
     color: "#3b82f6",
     placeholder: "john@example.com",
     width: "half",
@@ -30,7 +30,7 @@ export const FIELD_PRESETS: FieldPreset[] = [
   {
     type: "phone",
     label: "Phone",
-    icon: "📱",
+    iconName: "Smartphone",
     color: "#22c55e",
     placeholder: "+1 234 567 890",
     width: "half",
@@ -38,7 +38,7 @@ export const FIELD_PRESETS: FieldPreset[] = [
   {
     type: "textarea",
     label: "Message",
-    icon: "💬",
+    iconName: "MessageSquare",
     color: "#8b5cf6",
     placeholder: "Your message...",
     width: "full",
@@ -46,7 +46,7 @@ export const FIELD_PRESETS: FieldPreset[] = [
   {
     type: "select",
     label: "Country",
-    icon: "🌍",
+    iconName: "Globe",
     color: "#f59e0b",
     placeholder: "Select country",
     width: "half",
@@ -64,7 +64,7 @@ export const FIELD_PRESETS: FieldPreset[] = [
   {
     type: "date",
     label: "Date of Birth",
-    icon: "🎂",
+    iconName: "Cake",
     color: "#ec4899",
     placeholder: "Select date",
     width: "half",
@@ -72,7 +72,7 @@ export const FIELD_PRESETS: FieldPreset[] = [
   {
     type: "text",
     label: "Company",
-    icon: "🏢",
+    iconName: "Building2",
     color: "#14b8a6",
     placeholder: "Company name",
     width: "half",
@@ -80,7 +80,7 @@ export const FIELD_PRESETS: FieldPreset[] = [
   {
     type: "url",
     label: "Website",
-    icon: "🔗",
+    iconName: "Link",
     color: "#6366f1",
     placeholder: "https://example.com",
     width: "half",
@@ -88,7 +88,7 @@ export const FIELD_PRESETS: FieldPreset[] = [
   {
     type: "select",
     label: "Budget",
-    icon: "💰",
+    iconName: "DollarSign",
     color: "#22c55e",
     placeholder: "Select budget range",
     width: "half",
@@ -103,7 +103,7 @@ export const FIELD_PRESETS: FieldPreset[] = [
   {
     type: "select",
     label: "How did you find us?",
-    icon: "🔍",
+    iconName: "SearchCheck",
     color: "#f97316",
     placeholder: "Select source",
     width: "full",
@@ -117,7 +117,7 @@ export const FIELD_PRESETS: FieldPreset[] = [
   {
     type: "number",
     label: "Team Size",
-    icon: "👥",
+    iconName: "Users",
     color: "#8b5cf6",
     placeholder: "Number of people",
     width: "half",
@@ -125,7 +125,7 @@ export const FIELD_PRESETS: FieldPreset[] = [
   {
     type: "text",
     label: "Job Title",
-    icon: "💼",
+    iconName: "Briefcase",
     color: "#14b8a6",
     placeholder: "e.g. CEO, Developer",
     width: "half",

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Send, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import type { FormConfig } from "@/types/editor";
+import FormDropdown from "@/components/FormDropdown";
 
 interface Props {
   siteId: string;
@@ -25,6 +26,16 @@ export default function DynamicContactForm({
 
   const setValue = (id: string, val: string) =>
     setValues((p) => ({ ...p, [id]: val }));
+
+  const dropdownColors = useMemo(
+    () => ({
+      focusBorder: accentColor,
+      focusRing: `${accentColor}25`,
+      selected: accentColor,
+      selectedBg: `${accentColor}10`,
+    }),
+    [accentColor],
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,7 +118,6 @@ export default function DynamicContactForm({
   const inputBg = darkMode ? "rgba(255,255,255,0.05)" : "#ffffff";
   const inputBorder = darkMode ? "rgba(255,255,255,0.1)" : "#e2e8f0";
   const inputColor = darkMode ? "#ffffff" : "#0f172a";
-  const phColor = darkMode ? "rgba(255,255,255,0.3)" : "#94a3b8";
   const labelColor = darkMode ? "rgba(255,255,255,0.4)" : "#64748b";
 
   const baseStyle: React.CSSProperties = {
@@ -145,63 +155,57 @@ export default function DynamicContactForm({
 
           return (
             <div key={field.id} className={full ? "sm:col-span-2" : ""}>
-              <label
-                className="block mb-2"
-                style={{
-                  fontSize: 10,
-                  fontWeight: 900,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.1em",
-                  color: labelColor,
-                }}
-              >
-                {field.label}
-                {field.required && (
-                  <span style={{ color: "#ef4444", marginLeft: 4 }}>*</span>
-                )}
-              </label>
-
-              {field.type === "textarea" ? (
-                <textarea
-                  placeholder={field.placeholder}
+              {field.type === "select" ? (
+                <SelectField
+                  field={field}
                   value={values[field.id] || ""}
-                  onChange={(e) => setValue(field.id, e.target.value)}
-                  required={field.required}
-                  rows={4}
-                  style={{ ...baseStyle, resize: "none" }}
+                  onChange={(val) => setValue(field.id, val)}
+                  colors={dropdownColors}
                 />
-              ) : field.type === "select" ? (
-                <select
-                  value={values[field.id] || ""}
-                  onChange={(e) => setValue(field.id, e.target.value)}
-                  required={field.required}
-                  style={{
-                    ...baseStyle,
-                    color: values[field.id] ? inputColor : phColor,
-                  }}
-                >
-                  <option value="">{field.placeholder}</option>
-                  {(field.options || []).map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
               ) : (
-                <input
-                  type={
-                    field.type === "phone"
-                      ? "tel"
-                      : field.type === "date"
-                        ? "date"
-                        : field.type
-                  }
-                  placeholder={field.placeholder}
-                  value={values[field.id] || ""}
-                  onChange={(e) => setValue(field.id, e.target.value)}
-                  required={field.required}
-                  style={baseStyle}
-                />
+                <>
+                  <label
+                    className="block mb-2"
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 900,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.1em",
+                      color: labelColor,
+                    }}
+                  >
+                    {field.label}
+                    {field.required && (
+                      <span style={{ color: "#ef4444", marginLeft: 4 }}>*</span>
+                    )}
+                  </label>
+
+                  {field.type === "textarea" ? (
+                    <textarea
+                      placeholder={field.placeholder}
+                      value={values[field.id] || ""}
+                      onChange={(e) => setValue(field.id, e.target.value)}
+                      required={field.required}
+                      rows={4}
+                      style={{ ...baseStyle, resize: "none" }}
+                    />
+                  ) : (
+                    <input
+                      type={
+                        field.type === "phone"
+                          ? "tel"
+                          : field.type === "date"
+                            ? "date"
+                            : field.type
+                      }
+                      placeholder={field.placeholder}
+                      value={values[field.id] || ""}
+                      onChange={(e) => setValue(field.id, e.target.value)}
+                      required={field.required}
+                      style={baseStyle}
+                    />
+                  )}
+                </>
               )}
             </div>
           );
@@ -227,5 +231,49 @@ export default function DynamicContactForm({
         )}
       </button>
     </form>
+  );
+}
+
+function SelectField({
+  field,
+  value,
+  onChange,
+  colors,
+}: {
+  field: {
+    label: string;
+    required?: boolean;
+    placeholder?: string;
+    options?: { label: string; value: string }[];
+  };
+  value: string;
+  onChange: (val: string) => void;
+  colors: {
+    focusBorder: string;
+    focusRing: string;
+    selected: string;
+    selectedBg: string;
+  };
+}) {
+  const options = useMemo(
+    () =>
+      (field.options || []).map((o) => ({
+        value: o.value,
+        label: o.label,
+      })),
+    [field.options],
+  );
+
+  return (
+    <FormDropdown
+      options={options}
+      value={value}
+      onChange={(val) => onChange(String(val))}
+      placeholder={field.placeholder || "Select..."}
+      label={field.label}
+      required={field.required}
+      searchable={options.length > 5}
+      colors={colors}
+    />
   );
 }

@@ -32,6 +32,13 @@ const PLAN_OPTIONS = AVAILABLE_PLANS.map((plan) => ({
   label: getPlanLabel(plan),
 }));
 
+const PLAN_DROPDOWN_COLORS = {
+  focusBorder: "#6366f1",
+  focusRing: "rgba(99,102,241,0.15)",
+  selected: "#6366f1",
+  selectedBg: "rgba(99,102,241,0.08)",
+};
+
 function buildPlanMap(accounts: AdminAccountSummary[]): Record<string, Plan> {
   return Object.fromEntries(
     accounts.map((account) => [account.accountId, account.storedPlan]),
@@ -400,12 +407,7 @@ export default function AdminAccountsManager({
                         }
                         placeholder="Select plan"
                         searchable={false}
-                        colors={{
-                          focusBorder: "#6366f1",
-                          focusRing: "rgba(99,102,241,0.15)",
-                          selected: "#6366f1",
-                          selectedBg: "rgba(99,102,241,0.08)",
-                        }}
+                        colors={PLAN_DROPDOWN_COLORS}
                         icon={<Shield size={16} />}
                       />
 
