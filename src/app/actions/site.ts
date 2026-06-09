@@ -74,7 +74,6 @@ const extractStoragePaths = (content: SiteContent | null): string[] => {
   return paths;
 };
 
-// ✅ Reserved usernames
 const RESERVED_USERNAMES = [
   "admin",
   "dashboard",
@@ -98,9 +97,6 @@ const RESERVED_USERNAMES = [
   "domains",
 ];
 
-// ============================================================
-// deleteSiteAction
-// ============================================================
 export async function deleteSiteAction(
   siteId: string,
 ): Promise<ActionResult<{ deleted: boolean }>> {
@@ -139,7 +135,6 @@ export async function deleteSiteAction(
       };
     }
 
-    // ✅ فقط owner و admin يقدروا يمسحوا
     if (!["owner", "admin"].includes(membership.role)) {
       return {
         success: false,
@@ -215,9 +210,6 @@ export async function deleteSiteAction(
   }
 }
 
-// ============================================================
-// togglePublishAction ✅ جديد
-// ============================================================
 export async function togglePublishAction(
   siteId: string,
   publish: boolean,
@@ -265,28 +257,6 @@ export async function togglePublishAction(
       };
     }
 
-    // ✅ لو بيعمل unpublish - لازم plan مدفوع
-    if (!publish) {
-      const { data: account } = await supabase
-        .from("accounts")
-        .select("plan, trial_ends_at")
-        .eq("id", membership.account_id)
-        .single();
-
-      if (account) {
-        const isTrialActive =
-          account.trial_ends_at && new Date(account.trial_ends_at) > new Date();
-
-        if (account.plan === "free" && !isTrialActive) {
-          return {
-            success: false,
-            error: "Taking a site offline requires the Pro plan.",
-            code: ErrorCode.UPGRADE_REQUIRED,
-          };
-        }
-      }
-    }
-
     const { error: updateError } = await supabase
       .from("sites")
       .update({ is_published: publish })
@@ -316,9 +286,6 @@ export async function togglePublishAction(
   }
 }
 
-// ============================================================
-// updateSiteSettingsAction ✅ جديد
-// ============================================================
 export async function updateSiteSettingsAction(
   siteId: string,
   updates: { title: string; username: string },
@@ -334,7 +301,6 @@ export async function updateSiteSettingsAction(
       };
     }
 
-    // ✅ Validate title
     const title = updates.title.trim();
     if (title.length < 2 || title.length > 100) {
       return {
@@ -344,7 +310,6 @@ export async function updateSiteSettingsAction(
       };
     }
 
-    // ✅ Validate username
     const username = updates.username.toLowerCase().trim();
     const usernameRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
 

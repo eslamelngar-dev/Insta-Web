@@ -53,7 +53,7 @@ export interface Testimonial {
   role: string;
 }
 
-export interface Hero {
+export interface HeroConfig {
   tagline?: string;
   title?: string;
   subtitle?: string;
@@ -107,7 +107,7 @@ export interface SiteContent {
   features?: Feature[];
   portfolio?: PortfolioItem[];
   testimonial?: Testimonial;
-  hero?: Hero;
+  hero?: HeroConfig;
   email?: string;
   footer_text?: string;
   sections_visibility?: Record<string, boolean>;
@@ -120,9 +120,11 @@ export interface SiteData {
   username: string;
   title: string;
   bio: string;
+  primary_color?: string;
+  profile_image?: string;
   template_id: string;
   content: SiteContent;
-  is_published: boolean;
+  is_published?: boolean;
 }
 
 export interface BentoBlockType {
@@ -151,4 +153,21 @@ export interface MediaFile {
   url: string;
   size: number;
   created_at: string;
+}
+
+export interface TemplateProps {
+  site: Partial<SiteData> | { content: SiteContent };
+  isDark?: boolean;
+  Icons?: Record<string, React.FC<React.SVGProps<SVGSVGElement>>>;
+  BtnIcons?: Record<string, React.FC<React.ComponentProps<"svg">>>;
+}
+
+export interface TemplateConfig {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  component: React.FC<TemplateProps>;
+  features: string[];
+  defaultContent: SiteContent;
 }
