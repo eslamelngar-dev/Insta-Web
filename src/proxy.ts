@@ -58,6 +58,10 @@ function isStaticAsset(pathname: string): boolean {
   );
 }
 
+function isApiPath(pathname: string): boolean {
+  return pathname === "/api" || pathname.startsWith("/api/");
+}
+
 export async function proxy(request: NextRequest) {
   const hostname = request.headers.get("host") || "";
   const pathname = request.nextUrl.pathname;
@@ -67,6 +71,10 @@ export async function proxy(request: NextRequest) {
   }
 
   if (!isInstaWebDomain(hostname)) {
+    if (isApiPath(pathname)) {
+      return NextResponse.next({ request });
+    }
+
     const username = await resolveCustomDomain(hostname);
 
     if (!username) {

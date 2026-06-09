@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { Send, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import type { FormConfig } from "@/types/editor";
 import FormDropdown from "@/components/FormDropdown";
+import { extractApiErrorMessage, readApiResponse } from "@/lib/client-api";
 
 interface Props {
   siteId: string;
@@ -39,6 +40,17 @@ export default function DynamicContactForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const missingRequiredField = config.fields.find(
+      (field) => field.required && !String(values[field.id] ?? "").trim(),
+    );
+
+    if (missingRequiredField) {
+      setStatus("error");
+      setErrorMessage(`Please complete ${missingRequiredField.label}.`);
+      return;
+    }
+
     setStatus("loading");
     setErrorMessage("");
 
@@ -52,7 +64,10 @@ export default function DynamicContactForm({
 
       const metadata: Record<string, string> = {};
       config.fields.forEach((field) => {
-        if (values[field.id]) metadata[field.label] = values[field.id];
+        const value = String(values[field.id] ?? "").trim();
+        if (value) {
+          metadata[field.label] = value;
+        }
       });
 
       const res = await fetch("/api/leads", {
@@ -60,23 +75,37 @@ export default function DynamicContactForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           site_id: siteId,
-          name: nameField ? values[nameField.id] || null : null,
-          email: emailField ? values[emailField.id] || "" : "",
-          phone: phoneField ? values[phoneField.id] || null : null,
-          message: messageField ? values[messageField.id] || null : null,
+          name: nameField ? values[nameField.id]?.trim() || null : null,
+          email: emailField ? values[emailField.id]?.trim() || null : null,
+          phone: phoneField ? values[phoneField.id]?.trim() || null : null,
+          message: messageField
+            ? values[messageField.id]?.trim() || null
+            : null,
           source: "custom_form",
           metadata,
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Something went wrong");
+      const payload = await readApiResponse(res);
+
+      if (!res.ok) {
+        throw new Error(
+          extractApiErrorMessage(
+            payload,
+            "We couldn’t send your message right now. Please try again in a moment.",
+          ),
+        );
+      }
 
       setStatus("success");
       setValues({});
     } catch (err) {
       setStatus("error");
-      setErrorMessage(err instanceof Error ? err.message : "Failed to submit");
+      setErrorMessage(
+        err instanceof Error
+          ? err.message
+          : "We couldn’t send your message right now. Please try again in a moment.",
+      );
     }
   };
 

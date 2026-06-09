@@ -8,7 +8,6 @@ import { trackViewSchema } from "@/lib/validations";
 export const POST = withApiHandler(async (req: NextRequest) => {
   const validated = await validateJson(req, trackViewSchema);
 
-  // ✅ بنجيب الـ site عشان نأخذ الـ account_id منه
   const { data: site, error: siteError } = await supabaseAdmin
     .from("sites")
     .select("id, account_id")

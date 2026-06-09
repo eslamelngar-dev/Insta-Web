@@ -8,8 +8,14 @@ import { NotFoundError, normalizeSupabaseError } from "@/lib/errors";
 import { requireAccount } from "@/lib/account";
 import { validateJson, validateQuery } from "@/lib/validate";
 import { createLeadSchema, leadsQuerySchema } from "@/lib/validations";
+import { sendLeadNotification } from "@/lib/email";
+import { supabaseAdmin } from "@/lib/supabase-admin";
+import { rateLimitByIp, RATE_LIMITS } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const GET = withApiHandler(async (req: NextRequest) => {
+  rateLimitByIp(req, RATE_LIMITS.api);
+
   const { supabase, account } = await requireAccount();
 
   const query = validateQuery(leadsQuerySchema, req.nextUrl.searchParams);
@@ -65,24 +71,25 @@ export const GET = withApiHandler(async (req: NextRequest) => {
 });
 
 export const POST = withApiHandler(async (req: NextRequest) => {
-  const { supabase, account } = await requireAccount();
+  rateLimitByIp(req, RATE_LIMITS.leads);
+
   const validated = await validateJson(req, createLeadSchema);
 
-  const { data: site, error: siteError } = await supabase
+  const { data: site, error: siteError } = await supabaseAdmin
     .from("sites")
-    .select("id")
+    .select("id, account_id, title, username")
     .eq("id", validated.site_id)
-    .eq("account_id", account.id)
+    .eq("is_published", true)
     .single();
 
   if (siteError || !site) {
     throw new NotFoundError("site");
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("leads")
     .insert({
-      account_id: account.id,
+      account_id: site.account_id,
       site_id: validated.site_id,
       name: validated.name ?? null,
       email: validated.email ?? null,
@@ -96,6 +103,40 @@ export const POST = withApiHandler(async (req: NextRequest) => {
     .single();
 
   if (error) throw normalizeSupabaseError(error);
+
+  const { data: ownerMembership } = await supabaseAdmin
+    .from("account_members")
+    .select("user_id")
+    .eq("account_id", site.account_id)
+    .eq("role", "owner")
+    .eq("status", "active")
+    .limit(1)
+    .maybeSingle();
+
+  if (ownerMembership) {
+    const { data: authData } = await supabaseAdmin.auth.admin.getUserById(
+      ownerMembership.user_id,
+    );
+
+    const ownerEmail = authData?.user?.email;
+
+    if (ownerEmail) {
+      sendLeadNotification(ownerEmail, {
+        siteName: site.title || site.username,
+        leadName: validated.name ?? null,
+        leadEmail: validated.email ?? null,
+        leadPhone: validated.phone ?? null,
+        leadMessage: validated.message ?? null,
+        leadSource: validated.source ?? null,
+        metadata: (validated.metadata as Record<string, unknown>) ?? null,
+        createdAt: new Date().toISOString(),
+      }).catch((err) => {
+        logger.error("Background email notification failed", {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      });
+    }
+  }
 
   return createdResponse(data);
 });

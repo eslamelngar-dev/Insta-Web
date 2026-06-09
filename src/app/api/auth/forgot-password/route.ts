@@ -20,7 +20,6 @@ export async function POST(request: Request) {
       redirectTo: `${new URL(request.url).origin}/reset-password`,
     });
 
-    // دايماً success حتى لو الإيميل مش موجود (security)
     return NextResponse.json({
       message: "If an account exists, you will receive a reset link shortly.",
     });

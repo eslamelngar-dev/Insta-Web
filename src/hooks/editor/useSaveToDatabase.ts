@@ -5,6 +5,11 @@ import { createId } from "@/utils/id";
 import { useRouter } from "next/navigation";
 import React from "react";
 import { FileText, Globe } from "lucide-react";
+import {
+  extractApiErrorCode,
+  extractApiErrorMessage,
+  readApiResponse,
+} from "@/lib/client-api";
 import type { SiteData, SaveToDatabaseFn, SaveStatus } from "@/types/editor";
 
 export function useSaveToDatabase(
@@ -53,6 +58,44 @@ export function useSaveToDatabase(
           return;
         }
 
+        const targetId = siteIdRef.current;
+
+        if (targetId === "new") {
+          try {
+            const checkRes = await fetch("/api/sites/check-limit", {
+              method: "POST",
+            });
+
+            if (!checkRes.ok) {
+              const payload = await readApiResponse(checkRes);
+              const message = extractApiErrorMessage(
+                payload,
+                "You’ve reached the site limit for your current plan.",
+              );
+              const code = extractApiErrorCode(payload);
+
+              if (code === "UPGRADE_REQUIRED") {
+                toast.error("Site limit reached", {
+                  description: message,
+                });
+              } else {
+                toast.error(message);
+              }
+
+              setSaveStatus("unsaved");
+              releaseLock();
+              saveLockRef.current = null;
+              return;
+            }
+          } catch {
+            toast.error("Failed to verify site limit. Please try again.");
+            setSaveStatus("unsaved");
+            releaseLock();
+            saveLockRef.current = null;
+            return;
+          }
+        }
+
         const dbTitle =
           data.content.title ??
           data.content.hero?.title ??
@@ -73,7 +116,6 @@ export function useSaveToDatabase(
           is_published: publishMode === "publish",
         };
 
-        const targetId = siteIdRef.current;
         let queryResult;
 
         if (targetId === "new") {

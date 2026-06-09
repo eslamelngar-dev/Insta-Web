@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Send, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { extractApiErrorMessage, readApiResponse } from "@/lib/client-api";
 
 interface ContactFormProps {
   siteId: string;
@@ -30,6 +31,13 @@ export default function ContactForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!form.name.trim() || !form.email.trim() || !form.message.trim()) {
+      setStatus("error");
+      setErrorMessage("Please complete all required fields.");
+      return;
+    }
+
     setStatus("loading");
     setErrorMessage("");
 
@@ -39,25 +47,34 @@ export default function ContactForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           site_id: siteId,
-          name: form.name,
-          email: form.email,
-          phone: form.phone,
-          message: form.message,
+          name: form.name.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim() || null,
+          message: form.message.trim(),
           source,
         }),
       });
 
-      const data = await res.json();
+      const payload = await readApiResponse(res);
 
       if (!res.ok) {
-        throw new Error(data.error || "Something went wrong");
+        throw new Error(
+          extractApiErrorMessage(
+            payload,
+            "We couldn’t send your message right now. Please try again in a moment.",
+          ),
+        );
       }
 
       setStatus("success");
       setForm({ name: "", email: "", phone: "", message: "" });
     } catch (err) {
       setStatus("error");
-      setErrorMessage(err instanceof Error ? err.message : "Failed to submit");
+      setErrorMessage(
+        err instanceof Error
+          ? err.message
+          : "We couldn’t send your message right now. Please try again in a moment.",
+      );
     }
   };
 

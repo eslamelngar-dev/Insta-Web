@@ -1,9 +1,25 @@
+// src/constants/form-fields.ts
 import type { FormFieldType } from "@/types/editor";
+import type { LucideIcon } from "lucide-react";
+import {
+  User,
+  Mail,
+  Smartphone,
+  MessageSquare,
+  Globe,
+  Cake,
+  Building2,
+  Link,
+  DollarSign,
+  SearchCheck,
+  Users,
+  Briefcase,
+} from "lucide-react";
 
 export interface FieldPreset {
   type: FormFieldType;
   label: string;
-  iconName: string;
+  icon: LucideIcon;
   color: string;
   placeholder: string;
   width: "full" | "half";
@@ -14,7 +30,7 @@ export const FIELD_PRESETS: FieldPreset[] = [
   {
     type: "text",
     label: "Full Name",
-    iconName: "User",
+    icon: User,
     color: "#6366f1",
     placeholder: "John Doe",
     width: "half",
@@ -22,7 +38,7 @@ export const FIELD_PRESETS: FieldPreset[] = [
   {
     type: "email",
     label: "Email",
-    iconName: "Mail",
+    icon: Mail,
     color: "#3b82f6",
     placeholder: "john@example.com",
     width: "half",
@@ -30,7 +46,7 @@ export const FIELD_PRESETS: FieldPreset[] = [
   {
     type: "phone",
     label: "Phone",
-    iconName: "Smartphone",
+    icon: Smartphone,
     color: "#22c55e",
     placeholder: "+1 234 567 890",
     width: "half",
@@ -38,7 +54,7 @@ export const FIELD_PRESETS: FieldPreset[] = [
   {
     type: "textarea",
     label: "Message",
-    iconName: "MessageSquare",
+    icon: MessageSquare,
     color: "#8b5cf6",
     placeholder: "Your message...",
     width: "full",
@@ -46,7 +62,7 @@ export const FIELD_PRESETS: FieldPreset[] = [
   {
     type: "select",
     label: "Country",
-    iconName: "Globe",
+    icon: Globe,
     color: "#f59e0b",
     placeholder: "Select country",
     width: "half",
@@ -64,7 +80,7 @@ export const FIELD_PRESETS: FieldPreset[] = [
   {
     type: "date",
     label: "Date of Birth",
-    iconName: "Cake",
+    icon: Cake,
     color: "#ec4899",
     placeholder: "Select date",
     width: "half",
@@ -72,7 +88,7 @@ export const FIELD_PRESETS: FieldPreset[] = [
   {
     type: "text",
     label: "Company",
-    iconName: "Building2",
+    icon: Building2,
     color: "#14b8a6",
     placeholder: "Company name",
     width: "half",
@@ -80,7 +96,7 @@ export const FIELD_PRESETS: FieldPreset[] = [
   {
     type: "url",
     label: "Website",
-    iconName: "Link",
+    icon: Link,
     color: "#6366f1",
     placeholder: "https://example.com",
     width: "half",
@@ -88,7 +104,7 @@ export const FIELD_PRESETS: FieldPreset[] = [
   {
     type: "select",
     label: "Budget",
-    iconName: "DollarSign",
+    icon: DollarSign,
     color: "#22c55e",
     placeholder: "Select budget range",
     width: "half",
@@ -103,7 +119,7 @@ export const FIELD_PRESETS: FieldPreset[] = [
   {
     type: "select",
     label: "How did you find us?",
-    iconName: "SearchCheck",
+    icon: SearchCheck,
     color: "#f97316",
     placeholder: "Select source",
     width: "full",
@@ -117,7 +133,7 @@ export const FIELD_PRESETS: FieldPreset[] = [
   {
     type: "number",
     label: "Team Size",
-    iconName: "Users",
+    icon: Users,
     color: "#8b5cf6",
     placeholder: "Number of people",
     width: "half",
@@ -125,7 +141,7 @@ export const FIELD_PRESETS: FieldPreset[] = [
   {
     type: "text",
     label: "Job Title",
-    iconName: "Briefcase",
+    icon: Briefcase,
     color: "#14b8a6",
     placeholder: "e.g. CEO, Developer",
     width: "half",
