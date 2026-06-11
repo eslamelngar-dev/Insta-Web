@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { Suspense, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Zap, Mail, Lock, ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -13,7 +13,7 @@ import { AuthInput } from "@/components/auth/AuthInput";
 import { OAuthButtons } from "@/components/auth/OAuthButtons";
 import { Divider } from "@/components/auth/Divider";
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirectTo") || "/dashboard";
@@ -34,7 +34,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (errorParam) {
-      toast.error(decodeURIComponent(errorParam));
+      toast.error(errorParam);
     }
   }, [errorParam]);
 
@@ -203,5 +203,24 @@ export default function LoginPage() {
         </p>
       </motion.div>
     </div>
+  );
+}
+
+function LoginPageFallback() {
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6 transition-colors duration-500">
+      <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300">
+        <Loader2 size={18} className="animate-spin" />
+        <span className="text-sm font-bold">Loading...</span>
+      </div>
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginPageFallback />}>
+      <LoginPageContent />
+    </Suspense>
   );
 }
