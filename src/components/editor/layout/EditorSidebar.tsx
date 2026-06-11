@@ -241,7 +241,7 @@ export function EditorSidebar({
     <div className="flex flex-col h-full">
       <EditorHeader
         saveStatus={saveStatus}
-        isPublished={data.is_published}
+        isPublished={data.is_published ?? false}
         canUndo={canUndo}
         canRedo={canRedo}
         onUndo={onUndo}
