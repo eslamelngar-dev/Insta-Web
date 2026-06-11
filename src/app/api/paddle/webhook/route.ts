@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { paddle } from "@/lib/paddle";
+import { getPaddleClient } from "@/lib/paddle";
 import {
   updateAccountSubscription,
   clearAccountSubscription,
@@ -19,6 +19,8 @@ export async function POST(req: Request) {
   let event;
 
   try {
+    const paddle = getPaddleClient();
+
     event = await paddle.webhooks.unmarshal(
       body,
       process.env.PADDLE_WEBHOOK_SECRET!,

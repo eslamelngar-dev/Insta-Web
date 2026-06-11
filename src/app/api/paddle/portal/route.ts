@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { withApiHandler, successResponse } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase-server";
-import { paddle } from "@/lib/paddle";
+import { getPaddleClient } from "@/lib/paddle";
 import {
   UnauthorizedError,
   ForbiddenError,
@@ -55,6 +55,8 @@ export const POST = withApiHandler(async (_req: NextRequest) => {
   }
 
   try {
+    const paddle = getPaddleClient();
+
     const session = await paddle.customerPortalSessions.create(
       account.paddle_customer_id,
       [],
