@@ -1,19 +1,18 @@
 import { NextRequest } from "next/server";
 import { withApiHandler, successResponse } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase-server";
+import { paddle } from "@/lib/paddle";
 import {
+  UnauthorizedError,
+  ForbiddenError,
   AppError,
   ErrorCode,
-  ForbiddenError,
-  NotFoundError,
-  UnauthorizedError,
 } from "@/lib/errors";
-import { stripe } from "@/lib/stripe";
 import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
 
-export const POST = withApiHandler(async (req: NextRequest) => {
+export const POST = withApiHandler(async (_req: NextRequest) => {
   const supabase = await createClient();
 
   const {
@@ -42,50 +41,35 @@ export const POST = withApiHandler(async (req: NextRequest) => {
     throw new ForbiddenError();
   }
 
-  const { data: account, error: accountError } = await supabase
+  const { data: account } = await supabase
     .from("accounts")
-    .select("id, stripe_customer_id")
+    .select("id, paddle_customer_id")
     .eq("id", membership.account_id)
     .single();
 
-  if (accountError) {
-    throw new AppError({
-      code: ErrorCode.DATABASE_ERROR,
-      cause: accountError,
-    });
-  }
-
-  if (!account) {
-    throw new NotFoundError("generic");
-  }
-
-  if (!account.stripe_customer_id) {
+  if (!account?.paddle_customer_id) {
     throw new AppError({
       code: ErrorCode.NOT_FOUND,
-      message: "No Stripe customer found for this workspace.",
+      message: "No billing account found for this workspace.",
     });
   }
 
   try {
-    const session = await stripe.billingPortal.sessions.create({
-      customer: account.stripe_customer_id,
-      return_url: `${req.nextUrl.origin}/dashboard/billing`,
-    });
+    const session = await paddle.customerPortalSessions.create(
+      account.paddle_customer_id,
+      [],
+    );
 
-    return successResponse({ url: session.url });
-  } catch (error) {
-    logger.error("Stripe portal creation failed", {
-      error: error instanceof Error ? error.message : String(error),
+    return successResponse({ url: session.urls.general.overview });
+  } catch (err) {
+    logger.error("Paddle portal creation failed", {
+      error: err instanceof Error ? err.message : String(err),
       accountId: account.id,
-      userId: user.id,
     });
 
     throw new AppError({
       code: ErrorCode.EXTERNAL_SERVICE_ERROR,
-      message:
-        error instanceof Error
-          ? error.message
-          : "Failed to open Stripe billing portal.",
+      message: "Failed to open billing portal.",
     });
   }
 });

@@ -27,6 +27,7 @@ import {
   getPlanLabel,
 } from "@/lib/plans";
 import type { Plan } from "@/lib/plans";
+import { initializePaddle, type Paddle } from "@paddle/paddle-js";
 
 const PUBLIC_PLANS = listPublicPlans();
 
@@ -34,18 +35,17 @@ const ACTIVE_SUBSCRIPTION_STATUSES = new Set([
   "active",
   "trialing",
   "past_due",
-  "unpaid",
 ]);
 
 type PaidPlan = Exclude<Plan, "free">;
-type BillingAction = PaidPlan | "portal" | "sync" | null;
+type BillingAction = PaidPlan | "portal" | null;
 
 interface BillingState {
   accountId: string | null;
   accountPlan: Plan;
   trialEndsAt: string | null;
-  stripeCustomerId: string | null;
-  stripeSubscriptionId: string | null;
+  paddleCustomerId: string | null;
+  paddleSubscriptionId: string | null;
   subscriptionStatus: string | null;
   subscriptionCurrentPeriodEnd: string | null;
   subscriptionCancelAtPeriodEnd: boolean;
@@ -56,24 +56,21 @@ const DEFAULT_BILLING_STATE: BillingState = {
   accountId: null,
   accountPlan: "free",
   trialEndsAt: null,
-  stripeCustomerId: null,
-  stripeSubscriptionId: null,
+  paddleCustomerId: null,
+  paddleSubscriptionId: null,
   subscriptionStatus: null,
   subscriptionCurrentPeriodEnd: null,
   subscriptionCancelAtPeriodEnd: false,
   canManageBilling: false,
 };
 
-export default function BillingPage() {
+function BillingPageContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<BillingAction>(null);
   const [billing, setBilling] = useState<BillingState>(DEFAULT_BILLING_STATE);
-
-  const syncedSessionRef = useRef<string | null>(null);
-  const handledCanceledRef = useRef(false);
+  const [paddleInstance, setPaddleInstance] = useState<Paddle | undefined>();
+  const paddleInitialized = useRef(false);
 
   const fetchBilling = useCallback(async () => {
     setLoading(true);
@@ -107,7 +104,7 @@ export default function BillingPage() {
     const { data: account } = await supabase
       .from("accounts")
       .select(
-        "id, plan, trial_ends_at, stripe_customer_id, stripe_subscription_id, subscription_status, subscription_current_period_end, subscription_cancel_at_period_end",
+        "id, plan, trial_ends_at, paddle_customer_id, paddle_subscription_id, subscription_status, subscription_current_period_end, subscription_cancel_at_period_end",
       )
       .eq("id", membership.account_id)
       .single();
@@ -117,8 +114,8 @@ export default function BillingPage() {
         accountId: account.id,
         accountPlan: normalizePlan(account.plan),
         trialEndsAt: account.trial_ends_at ?? null,
-        stripeCustomerId: account.stripe_customer_id ?? null,
-        stripeSubscriptionId: account.stripe_subscription_id ?? null,
+        paddleCustomerId: account.paddle_customer_id ?? null,
+        paddleSubscriptionId: account.paddle_subscription_id ?? null,
         subscriptionStatus: account.subscription_status ?? null,
         subscriptionCurrentPeriodEnd:
           account.subscription_current_period_end ?? null,
@@ -136,48 +133,25 @@ export default function BillingPage() {
   }, [fetchBilling]);
 
   useEffect(() => {
-    const checkoutState = searchParams.get("checkout");
-    const sessionId = searchParams.get("session_id");
+    if (paddleInitialized.current) return;
+    paddleInitialized.current = true;
 
-    if (
-      checkoutState === "success" &&
-      sessionId &&
-      syncedSessionRef.current !== sessionId
-    ) {
-      syncedSessionRef.current = sessionId;
-      setActionLoading("sync");
-
-      void (async () => {
-        try {
-          const response = await fetch(
-            `/api/stripe/session?session_id=${encodeURIComponent(sessionId)}`,
-          );
-          const payload = await response.json();
-
-          if (!payload.success) {
-            toast.error(
-              payload.error?.message ?? "Failed to activate subscription.",
-            );
-            return;
-          }
-
-          toast.success("Subscription activated successfully.");
-          await fetchBilling();
-        } catch {
-          toast.error("Failed to activate subscription.");
-        } finally {
-          setActionLoading(null);
-          router.replace("/dashboard/billing");
+    initializePaddle({
+      environment:
+        (process.env.NEXT_PUBLIC_PADDLE_ENV as "sandbox" | "production") ??
+        "sandbox",
+      token: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN!,
+      eventCallback: (event) => {
+        if (event.name === "checkout.completed") {
+          toast.success("Subscription activated successfully!");
+          void fetchBilling();
         }
-      })();
-    }
-
-    if (checkoutState === "canceled" && !handledCanceledRef.current) {
-      handledCanceledRef.current = true;
-      toast.error("Checkout was canceled.");
-      router.replace("/dashboard/billing");
-    }
-  }, [searchParams, fetchBilling, router]);
+        if (event.name === "checkout.closed") {
+          setActionLoading(null);
+        }
+      },
+    }).then((p) => setPaddleInstance(p));
+  }, [fetchBilling]);
 
   const trialActive = useMemo(
     () => isTrialActive(billing.accountPlan, billing.trialEndsAt),
@@ -195,67 +169,53 @@ export default function BillingPage() {
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
   }, [billing.trialEndsAt]);
 
-  const hasActiveStripeSubscription = useMemo(() => {
+  const hasActiveSubscription = useMemo(() => {
     return Boolean(
-      billing.stripeCustomerId &&
-      billing.stripeSubscriptionId &&
+      billing.paddleCustomerId &&
+      billing.paddleSubscriptionId &&
       billing.subscriptionStatus &&
       ACTIVE_SUBSCRIPTION_STATUSES.has(billing.subscriptionStatus),
     );
   }, [
-    billing.stripeCustomerId,
-    billing.stripeSubscriptionId,
+    billing.paddleCustomerId,
+    billing.paddleSubscriptionId,
     billing.subscriptionStatus,
   ]);
 
-  // الـ plan مدفوع بس مش عن طريق Stripe خالص
-  // يعني لا عنده customer ولا subscription نشط
-  const paidPlanManagedExternally = useMemo(() => {
-    const hasAnyStripeHistory =
-      !!billing.stripeCustomerId || !!billing.stripeSubscriptionId;
-
-    return (
-      billing.accountPlan !== "free" &&
-      !trialActive &&
-      !hasActiveStripeSubscription &&
-      !hasAnyStripeHistory
-    );
-  }, [
-    billing.accountPlan,
-    billing.stripeCustomerId,
-    billing.stripeSubscriptionId,
-    trialActive,
-    hasActiveStripeSubscription,
-  ]);
-
   const handleCheckout = async (plan: PaidPlan) => {
+    if (!paddleInstance) {
+      toast.error("Payment system not ready. Please refresh and try again.");
+      return;
+    }
+
     setActionLoading(plan);
 
     try {
-      const response = await fetch("/api/stripe/checkout", {
+      const res = await fetch("/api/paddle/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plan }),
       });
 
-      const payload = await response.json();
+      const payload = await res.json();
 
       if (!payload.success) {
-        toast.error(
-          payload.error?.message ?? "Failed to create checkout session.",
-        );
+        toast.error(payload.error?.message ?? "Failed to start checkout.");
+        setActionLoading(null);
         return;
       }
 
-      if (!payload.data?.url) {
-        toast.error("Missing checkout URL.");
-        return;
-      }
+      const { priceId, accountId, userEmail, paddleCustomerId } = payload.data;
 
-      window.location.href = payload.data.url;
+      paddleInstance.Checkout.open({
+        items: [{ priceId, quantity: 1 }],
+        customer: paddleCustomerId
+          ? { id: paddleCustomerId }
+          : { email: userEmail },
+        customData: { account_id: accountId },
+      });
     } catch {
-      toast.error("Failed to create checkout session.");
-    } finally {
+      toast.error("Failed to start checkout.");
       setActionLoading(null);
     }
   };
@@ -264,19 +224,11 @@ export default function BillingPage() {
     setActionLoading("portal");
 
     try {
-      const response = await fetch("/api/stripe/portal", {
-        method: "POST",
-      });
-
-      const payload = await response.json();
+      const res = await fetch("/api/paddle/portal", { method: "POST" });
+      const payload = await res.json();
 
       if (!payload.success) {
         toast.error(payload.error?.message ?? "Failed to open billing portal.");
-        return;
-      }
-
-      if (!payload.data?.url) {
-        toast.error("Missing billing portal URL.");
         return;
       }
 
@@ -298,7 +250,7 @@ export default function BillingPage() {
     }).format(new Date(billing.subscriptionCurrentPeriodEnd));
   }, [billing.subscriptionCurrentPeriodEnd]);
 
-  if (loading || actionLoading === "sync") {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-indigo-500">
         <Loader2 className="animate-spin" size={36} />
@@ -319,7 +271,7 @@ export default function BillingPage() {
             </p>
           </div>
 
-          {billing.canManageBilling && billing.stripeCustomerId && (
+          {billing.canManageBilling && billing.paddleCustomerId && (
             <button
               onClick={handlePortal}
               disabled={actionLoading === "portal"}
@@ -360,7 +312,7 @@ export default function BillingPage() {
           {billing.subscriptionStatus && (
             <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-2 text-xs font-black uppercase tracking-widest">
               <span className="w-2 h-2 rounded-full bg-indigo-500" />
-              Stripe Status: {billing.subscriptionStatus}
+              Status: {billing.subscriptionStatus}
             </div>
           )}
         </div>
@@ -415,12 +367,7 @@ export default function BillingPage() {
             disabled = true;
             buttonClass =
               "bg-slate-100 dark:bg-slate-900 text-slate-400 cursor-not-allowed";
-          } else if (paidPlanManagedExternally) {
-            buttonLabel = "Managed Externally";
-            disabled = true;
-            buttonClass =
-              "bg-slate-100 dark:bg-slate-900 text-slate-400 cursor-not-allowed";
-          } else if (hasActiveStripeSubscription) {
+          } else if (hasActiveSubscription) {
             buttonLabel = "Manage Subscription";
             disabled = false;
             buttonClass =
@@ -488,7 +435,7 @@ export default function BillingPage() {
                 {isPlanLoading ? (
                   <span className="inline-flex items-center gap-2">
                     <Loader2 size={16} className="animate-spin" />
-                    Processing
+                    Processing...
                   </span>
                 ) : (
                   buttonLabel
@@ -499,5 +446,19 @@ export default function BillingPage() {
         })}
       </div>
     </div>
+  );
+}
+
+export default function BillingPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center text-indigo-500">
+          <Loader2 className="animate-spin" size={36} />
+        </div>
+      }
+    >
+      <BillingPageContent />
+    </React.Suspense>
   );
 }
