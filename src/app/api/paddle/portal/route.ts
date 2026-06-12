@@ -43,14 +43,21 @@ export const POST = withApiHandler(async (_req: NextRequest) => {
 
   const { data: account } = await supabase
     .from("accounts")
-    .select("id, paddle_customer_id")
+    .select(
+      "id, paddle_customer_id, paddle_subscription_id, subscription_status",
+    )
     .eq("id", membership.account_id)
     .single();
 
-  if (!account?.paddle_customer_id) {
+  if (
+    !account?.paddle_customer_id ||
+    !account.paddle_subscription_id ||
+    !account.subscription_status ||
+    !["active", "trialing", "past_due"].includes(account.subscription_status)
+  ) {
     throw new AppError({
       code: ErrorCode.NOT_FOUND,
-      message: "No billing account found for this workspace.",
+      message: "No active subscription found for this workspace.",
     });
   }
 

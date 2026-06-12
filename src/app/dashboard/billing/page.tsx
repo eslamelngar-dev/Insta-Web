@@ -16,7 +16,6 @@ import {
   CreditCard,
   ExternalLink,
 } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import {
@@ -65,7 +64,6 @@ const DEFAULT_BILLING_STATE: BillingState = {
 };
 
 function BillingPageContent() {
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<BillingAction>(null);
   const [billing, setBilling] = useState<BillingState>(DEFAULT_BILLING_STATE);
@@ -172,9 +170,9 @@ function BillingPageContent() {
   const hasActiveSubscription = useMemo(() => {
     return Boolean(
       billing.paddleCustomerId &&
-      billing.paddleSubscriptionId &&
-      billing.subscriptionStatus &&
-      ACTIVE_SUBSCRIPTION_STATUSES.has(billing.subscriptionStatus),
+        billing.paddleSubscriptionId &&
+        billing.subscriptionStatus &&
+        ACTIVE_SUBSCRIPTION_STATUSES.has(billing.subscriptionStatus),
     );
   }, [
     billing.paddleCustomerId,
@@ -205,14 +203,20 @@ function BillingPageContent() {
         return;
       }
 
-      const { priceId, accountId, userEmail, paddleCustomerId } = payload.data;
+      const { priceId, accountId, userEmail } = payload.data;
 
       paddleInstance.Checkout.open({
         items: [{ priceId, quantity: 1 }],
-        customer: paddleCustomerId
-          ? { id: paddleCustomerId }
-          : { email: userEmail },
-        customData: { account_id: accountId },
+        customer: {
+          email: userEmail,
+        },
+        customData: {
+          account_id: accountId,
+        },
+        settings: {
+          displayMode: "overlay",
+          successUrl: `${window.location.origin}/dashboard/billing`,
+        },
       });
     } catch {
       toast.error("Failed to start checkout.");
@@ -271,7 +275,7 @@ function BillingPageContent() {
             </p>
           </div>
 
-          {billing.canManageBilling && billing.paddleCustomerId && (
+          {billing.canManageBilling && hasActiveSubscription && (
             <button
               onClick={handlePortal}
               disabled={actionLoading === "portal"}
