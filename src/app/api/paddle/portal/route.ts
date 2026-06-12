@@ -66,19 +66,25 @@ export const POST = withApiHandler(async (_req: NextRequest) => {
 
     const session = await paddle.customerPortalSessions.create(
       account.paddle_customer_id,
-      [],
+      [account.paddle_subscription_id],
     );
 
     return successResponse({ url: session.urls.general.overview });
   } catch (err) {
     logger.error("Paddle portal creation failed", {
-      error: err instanceof Error ? err.message : String(err),
+      message: err instanceof Error ? err.message : String(err),
       accountId: account.id,
+      customerId: account.paddle_customer_id,
+      subscriptionId: account.paddle_subscription_id,
+      status: account.subscription_status,
     });
 
     throw new AppError({
       code: ErrorCode.EXTERNAL_SERVICE_ERROR,
-      message: "Failed to open billing portal.",
+      message:
+        process.env.NODE_ENV === "development" && err instanceof Error
+          ? err.message
+          : "Failed to open billing portal.",
     });
   }
 });
