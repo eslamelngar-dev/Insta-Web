@@ -1,6 +1,7 @@
 "use client";
 
 import React, {
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -170,9 +171,9 @@ function BillingPageContent() {
   const hasActiveSubscription = useMemo(() => {
     return Boolean(
       billing.paddleCustomerId &&
-        billing.paddleSubscriptionId &&
-        billing.subscriptionStatus &&
-        ACTIVE_SUBSCRIPTION_STATUSES.has(billing.subscriptionStatus),
+      billing.paddleSubscriptionId &&
+      billing.subscriptionStatus &&
+      ACTIVE_SUBSCRIPTION_STATUSES.has(billing.subscriptionStatus),
     );
   }, [
     billing.paddleCustomerId,
@@ -205,8 +206,18 @@ function BillingPageContent() {
 
       const { priceId, accountId, userEmail } = payload.data;
 
+      if (
+        !priceId ||
+        typeof priceId !== "string" ||
+        !priceId.startsWith("pri_")
+      ) {
+        toast.error("Invalid billing price configuration.");
+        setActionLoading(null);
+        return;
+      }
+
       paddleInstance.Checkout.open({
-        items: [{ priceId, quantity: 1 }],
+        items: [{ priceId }],
         customer: {
           email: userEmail,
         },
@@ -455,7 +466,7 @@ function BillingPageContent() {
 
 export default function BillingPage() {
   return (
-    <React.Suspense
+    <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center text-indigo-500">
           <Loader2 className="animate-spin" size={36} />
@@ -463,6 +474,6 @@ export default function BillingPage() {
       }
     >
       <BillingPageContent />
-    </React.Suspense>
+    </Suspense>
   );
 }
