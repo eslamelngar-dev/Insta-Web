@@ -16,6 +16,8 @@ import {
   Clock3,
   CreditCard,
   ExternalLink,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -27,6 +29,7 @@ import {
   getPlanLabel,
 } from "@/lib/plans";
 import type { Plan } from "@/lib/plans";
+import { getBrowserPaddleEnvironmentName } from "@/lib/paddle-config";
 import { initializePaddle, type Paddle } from "@paddle/paddle-js";
 
 const PUBLIC_PLANS = listPublicPlans();
@@ -37,8 +40,10 @@ const ACTIVE_SUBSCRIPTION_STATUSES = new Set([
   "past_due",
 ]);
 
+const PLAN_RANK: Record<string, number> = { free: 0, pro: 1, business: 2 };
+
 type PaidPlan = Exclude<Plan, "free">;
-type BillingAction = PaidPlan | "portal" | null;
+type BillingAction = PaidPlan | "portal" | "change-plan" | null;
 
 interface BillingState {
   accountId: string | null;
@@ -70,6 +75,10 @@ function BillingPageContent() {
   const [billing, setBilling] = useState<BillingState>(DEFAULT_BILLING_STATE);
   const [paddleInstance, setPaddleInstance] = useState<Paddle | undefined>();
   const paddleInitialized = useRef(false);
+
+  const paddleEnvironment = getBrowserPaddleEnvironmentName();
+  const paddleClientToken =
+    process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN?.trim() ?? "";
 
   const fetchBilling = useCallback(async () => {
     setLoading(true);
@@ -132,25 +141,31 @@ function BillingPageContent() {
   }, [fetchBilling]);
 
   useEffect(() => {
-    if (paddleInitialized.current) return;
+    if (paddleInitialized.current || !paddleClientToken) return;
     paddleInitialized.current = true;
 
     initializePaddle({
-      environment:
-        (process.env.NEXT_PUBLIC_PADDLE_ENV as "sandbox" | "production") ??
-        "sandbox",
-      token: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN!,
+      environment: paddleEnvironment,
+      token: paddleClientToken,
       eventCallback: (event) => {
         if (event.name === "checkout.completed") {
           toast.success("Subscription activated successfully!");
           void fetchBilling();
         }
+
         if (event.name === "checkout.closed") {
           setActionLoading(null);
         }
       },
-    }).then((p) => setPaddleInstance(p));
-  }, [fetchBilling]);
+    })
+      .then((p) => setPaddleInstance(p))
+      .catch(() => {
+        paddleInitialized.current = false;
+        toast.error(
+          "Payment system failed to initialize. Please refresh and try again.",
+        );
+      });
+  }, [fetchBilling, paddleClientToken, paddleEnvironment]);
 
   const trialActive = useMemo(
     () => isTrialActive(billing.accountPlan, billing.trialEndsAt),
@@ -218,12 +233,8 @@ function BillingPageContent() {
 
       paddleInstance.Checkout.open({
         items: [{ priceId }],
-        customer: {
-          email: userEmail,
-        },
-        customData: {
-          account_id: accountId,
-        },
+        customer: { email: userEmail },
+        customData: { account_id: accountId },
         settings: {
           displayMode: "overlay",
           successUrl: `${window.location.origin}/dashboard/billing`,
@@ -231,6 +242,33 @@ function BillingPageContent() {
       });
     } catch {
       toast.error("Failed to start checkout.");
+      setActionLoading(null);
+    }
+  };
+
+  const handleChangePlan = async (plan: PaidPlan) => {
+    setActionLoading(plan);
+
+    try {
+      const res = await fetch("/api/paddle/change-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan }),
+      });
+
+      const payload = await res.json();
+
+      if (!payload.success) {
+        toast.error(payload.error?.message ?? "Failed to change plan.");
+        setActionLoading(null);
+        return;
+      }
+
+      toast.success(payload.data.message);
+      await fetchBilling();
+    } catch {
+      toast.error("Failed to change plan.");
+    } finally {
       setActionLoading(null);
     }
   };
@@ -247,7 +285,7 @@ function BillingPageContent() {
         return;
       }
 
-      window.location.href = payload.data.url;
+      window.open(payload.data.url, "_blank");
     } catch {
       toast.error("Failed to open billing portal.");
     } finally {
@@ -257,7 +295,6 @@ function BillingPageContent() {
 
   const formattedPeriodEnd = useMemo(() => {
     if (!billing.subscriptionCurrentPeriodEnd) return null;
-
     return new Intl.DateTimeFormat("en-US", {
       month: "short",
       day: "numeric",
@@ -347,17 +384,28 @@ function BillingPageContent() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
         {PUBLIC_PLANS.map((plan) => {
+          const isCurrentPlan =
+            !trialActive && plan.id === effectivePlan && hasActiveSubscription;
           const isBasePlanCard = trialActive && plan.id === billing.accountPlan;
           const isTrialAccessCard = trialActive && plan.id === effectivePlan;
-          const isCurrentPlanCard = !trialActive && plan.id === effectivePlan;
+          const isFreePlan = plan.id === "free";
 
-          let buttonLabel = `Upgrade to ${plan.name}`;
+          const currentRank = PLAN_RANK[billing.accountPlan] ?? 0;
+          const targetRank = PLAN_RANK[plan.id] ?? 0;
+          const isUpgrade = targetRank > currentRank;
+
+          let buttonLabel: string;
           let disabled = false;
-          let buttonClass =
-            "bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:opacity-90";
+          let buttonClass: string;
           let onClick: (() => void) | undefined;
+          let ButtonIcon: React.ElementType | null = null;
 
-          if (isBasePlanCard) {
+          if (isFreePlan) {
+            buttonLabel = "Free Plan";
+            disabled = true;
+            buttonClass =
+              "bg-slate-100 dark:bg-slate-900 text-slate-400 cursor-not-allowed";
+          } else if (isBasePlanCard) {
             buttonLabel = "Base Plan";
             disabled = true;
             buttonClass =
@@ -367,13 +415,8 @@ function BillingPageContent() {
             disabled = true;
             buttonClass =
               "bg-slate-100 dark:bg-slate-900 text-slate-400 cursor-not-allowed";
-          } else if (isCurrentPlanCard) {
+          } else if (isCurrentPlan) {
             buttonLabel = "Current Plan";
-            disabled = true;
-            buttonClass =
-              "bg-slate-100 dark:bg-slate-900 text-slate-400 cursor-not-allowed";
-          } else if (plan.id === "free") {
-            buttonLabel = "Free Plan";
             disabled = true;
             buttonClass =
               "bg-slate-100 dark:bg-slate-900 text-slate-400 cursor-not-allowed";
@@ -383,16 +426,21 @@ function BillingPageContent() {
             buttonClass =
               "bg-slate-100 dark:bg-slate-900 text-slate-400 cursor-not-allowed";
           } else if (hasActiveSubscription) {
-            buttonLabel = "Manage Subscription";
+            buttonLabel = isUpgrade
+              ? `Upgrade to ${plan.name}`
+              : `Downgrade to ${plan.name}`;
             disabled = false;
-            buttonClass =
-              "bg-indigo-600 text-white hover:bg-indigo-500 shadow-xl shadow-indigo-600/20";
-            onClick = handlePortal;
+            buttonClass = isUpgrade
+              ? "bg-indigo-600 text-white hover:bg-indigo-500 shadow-xl shadow-indigo-600/20"
+              : "bg-slate-700 dark:bg-slate-600 text-white hover:opacity-90";
+            ButtonIcon = isUpgrade ? TrendingUp : TrendingDown;
+            onClick = () => handleChangePlan(plan.id as PaidPlan);
           } else {
             buttonLabel = `Upgrade to ${plan.name}`;
             disabled = false;
             buttonClass =
               "bg-indigo-600 text-white hover:bg-indigo-500 shadow-xl shadow-indigo-600/20";
+            ButtonIcon = TrendingUp;
             onClick = () => handleCheckout(plan.id as PaidPlan);
           }
 
@@ -445,17 +493,32 @@ function BillingPageContent() {
               <button
                 onClick={onClick}
                 disabled={disabled || actionLoading !== null}
-                className={`w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm transition-all ${buttonClass}`}
+                className={`w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm transition-all inline-flex items-center justify-center gap-2 ${buttonClass}`}
               >
                 {isPlanLoading ? (
-                  <span className="inline-flex items-center gap-2">
+                  <>
                     <Loader2 size={16} className="animate-spin" />
                     Processing...
-                  </span>
+                  </>
                 ) : (
-                  buttonLabel
+                  <>
+                    {ButtonIcon && <ButtonIcon size={15} />}
+                    {buttonLabel}
+                  </>
                 )}
               </button>
+
+              {hasActiveSubscription &&
+                !isFreePlan &&
+                !isCurrentPlan &&
+                !isBasePlanCard &&
+                !isTrialAccessCard &&
+                !isUpgrade &&
+                billing.canManageBilling && (
+                  <p className="text-center text-xs text-slate-400 mt-3">
+                    Takes effect at end of billing period
+                  </p>
+                )}
             </motion.div>
           );
         })}

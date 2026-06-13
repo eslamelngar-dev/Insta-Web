@@ -57,7 +57,9 @@ export async function updateAccountSubscription(data: {
     return;
   }
 
-  const isActive = ["active", "trialing"].includes(data.status);
+  const keepsPaidPlan = ["active", "trialing", "past_due"].includes(
+    data.status,
+  );
 
   const { error } = await supabaseAdmin
     .from("accounts")
@@ -68,7 +70,7 @@ export async function updateAccountSubscription(data: {
       subscription_status: data.status,
       subscription_current_period_end: data.currentPeriodEnd ?? null,
       subscription_cancel_at_period_end: false,
-      plan: isActive ? plan : "free",
+      plan: keepsPaidPlan ? plan : "free",
       trial_ends_at: null,
     })
     .eq("id", accountId);
