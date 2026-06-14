@@ -40,6 +40,28 @@ function formatDate(value: string | null) {
   }).format(new Date(value));
 }
 
+function getDaysLeft(value: string | null) {
+  if (!value) return null;
+
+  const diff = new Date(value).getTime() - Date.now();
+
+  if (diff <= 0) return null;
+
+  return Math.max(1, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+}
+
+function formatDateWithDaysLeft(value: string | null) {
+  const formattedDate = formatDate(value);
+
+  if (formattedDate === "—") return formattedDate;
+
+  const daysLeft = getDaysLeft(value);
+
+  if (!daysLeft) return formattedDate;
+
+  return `${formattedDate} · ${daysLeft} day${daysLeft === 1 ? "" : "s"} left`;
+}
+
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-white/5">
@@ -102,6 +124,14 @@ export function SubscriptionDetailsDrawer({
       details.currentPlan.charAt(0).toUpperCase() + details.currentPlan.slice(1)
     );
   }, [details?.currentPlan]);
+
+  const formattedCurrentPeriodEnd = useMemo(() => {
+    return formatDate(details?.currentPeriodEnd ?? null);
+  }, [details?.currentPeriodEnd]);
+
+  const formattedCurrentPeriodEndWithDays = useMemo(() => {
+    return formatDateWithDaysLeft(details?.currentPeriodEnd ?? null);
+  }, [details?.currentPeriodEnd]);
 
   const handleOpenManagement = () => {
     if (!details?.managementUrl) {
@@ -206,7 +236,7 @@ export function SubscriptionDetailsDrawer({
                             </p>
                             <p className="mt-1 text-sm leading-6 text-amber-700 dark:text-amber-300">
                               Your subscription will remain active until{" "}
-                              {formatDate(details.currentPeriodEnd)}.
+                              {formattedCurrentPeriodEndWithDays}.
                             </p>
                           </div>
                         </div>
@@ -224,7 +254,7 @@ export function SubscriptionDetailsDrawer({
                     />
                     <DetailRow
                       label="Renewal / period end"
-                      value={formatDate(details.currentPeriodEnd)}
+                      value={formattedCurrentPeriodEnd}
                     />
                     <DetailRow
                       label="Trial end"
@@ -253,8 +283,8 @@ export function SubscriptionDetailsDrawer({
                               Cancel subscription
                             </p>
                             <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                              Your subscription will remain active until the end
-                              of the current billing period.
+                              Your subscription will remain active until{" "}
+                              {formattedCurrentPeriodEndWithDays}.
                             </p>
                             <button
                               onClick={() => setConfirmCancel(true)}
@@ -271,7 +301,7 @@ export function SubscriptionDetailsDrawer({
                             <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
                               This will stop renewal only. Your paid access will
                               remain available until{" "}
-                              {formatDate(details.currentPeriodEnd)}.
+                              {formattedCurrentPeriodEndWithDays}.
                             </p>
                             <div className="mt-4 flex gap-3">
                               <button

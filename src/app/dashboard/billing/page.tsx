@@ -83,6 +83,38 @@ const DEFAULT_BILLING_STATE: BillingState = {
   canManageBilling: false,
 };
 
+function formatDate(value: string | null) {
+  if (!value) return null;
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+function getDaysLeft(value: string | null) {
+  if (!value) return null;
+
+  const diff = new Date(value).getTime() - Date.now();
+
+  if (diff <= 0) return null;
+
+  return Math.max(1, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+}
+
+function formatDateWithDaysLeft(value: string | null) {
+  const formattedDate = formatDate(value);
+
+  if (!formattedDate) return null;
+
+  const daysLeft = getDaysLeft(value);
+
+  if (!daysLeft) return formattedDate;
+
+  return `${formattedDate} · ${daysLeft} day${daysLeft === 1 ? "" : "s"} left`;
+}
+
 function BillingPageContent() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<BillingAction>(null);
@@ -378,13 +410,8 @@ function BillingPageContent() {
     }
   };
 
-  const formattedPeriodEnd = useMemo(() => {
-    if (!billing.subscriptionCurrentPeriodEnd) return null;
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    }).format(new Date(billing.subscriptionCurrentPeriodEnd));
+  const formattedPeriodEndWithDays = useMemo(() => {
+    return formatDateWithDaysLeft(billing.subscriptionCurrentPeriodEnd);
   }, [billing.subscriptionCurrentPeriodEnd]);
 
   if (loading) {
@@ -472,11 +499,16 @@ function BillingPageContent() {
             </div>
           )}
 
-          {billing.subscriptionCancelAtPeriodEnd && formattedPeriodEnd && (
-            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
-              Your subscription will end on {formattedPeriodEnd}.
-            </div>
-          )}
+          {billing.subscriptionCancelAtPeriodEnd &&
+            formattedPeriodEndWithDays && (
+              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
+                Cancellation scheduled
+                <div className="mt-1 text-sm font-medium text-amber-700 dark:text-amber-300">
+                  Your subscription will remain active until{" "}
+                  {formattedPeriodEndWithDays}.
+                </div>
+              </div>
+            )}
 
           {!billing.canManageBilling && (
             <div className="mt-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-3 text-sm font-semibold text-slate-600 dark:text-slate-300">
