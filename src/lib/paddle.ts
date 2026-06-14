@@ -162,6 +162,27 @@ export async function paddleApiRequest<T>(
   return payload.data;
 }
 
+export async function cancelPaddleSubscription(
+  subscriptionId: string,
+  effectiveFrom: "immediately" | "next_billing_period",
+): Promise<void> {
+  const cleanedSubscriptionId = sanitizePaddleId(
+    subscriptionId,
+    "sub_",
+    "subscription ID",
+  );
+
+  await paddleApiRequest<unknown>(
+    `/subscriptions/${encodeURIComponent(cleanedSubscriptionId)}/cancel`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        effective_from: effectiveFrom,
+      }),
+    },
+  );
+}
+
 export function getPriceIdForPlan(plan: string): string {
   if (plan === "pro") {
     return sanitizePriceId(process.env.PADDLE_PRO_PRICE_ID, "pro");

@@ -128,6 +128,13 @@ export const POST = withApiHandler(async (req: NextRequest) => {
     });
   }
 
+  if (account.subscription_status === "trialing") {
+    throw new AppError({
+      code: ErrorCode.CONFLICT,
+      message: "This plan change is not available during trial from this flow.",
+    });
+  }
+
   const subscriptionId = sanitizePaddleId(
     account.paddle_subscription_id,
     "sub_",
@@ -164,6 +171,14 @@ export const POST = withApiHandler(async (req: NextRequest) => {
         quantity: item.quantity,
       })),
     });
+
+    if (subscription.status === "trialing") {
+      throw new AppError({
+        code: ErrorCode.CONFLICT,
+        message:
+          "This plan change is not available during trial from this flow.",
+      });
+    }
 
     stage = "subscription_update";
 
@@ -207,6 +222,10 @@ export const POST = withApiHandler(async (req: NextRequest) => {
       stage,
       error: serializeError(err),
     });
+
+    if (err instanceof AppError) {
+      throw err;
+    }
 
     throw new AppError({
       code: ErrorCode.EXTERNAL_SERVICE_ERROR,

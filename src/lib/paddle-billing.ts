@@ -33,6 +33,7 @@ export async function updateAccountSubscription(data: {
   paddlePriceId: string;
   status: string;
   currentPeriodEnd: string | null;
+  cancelAtPeriodEnd?: boolean;
   accountId?: string | null;
 }): Promise<void> {
   const plan = getPlanFromPriceId(data.paddlePriceId);
@@ -69,7 +70,7 @@ export async function updateAccountSubscription(data: {
       paddle_price_id: data.paddlePriceId,
       subscription_status: data.status,
       subscription_current_period_end: data.currentPeriodEnd ?? null,
-      subscription_cancel_at_period_end: false,
+      subscription_cancel_at_period_end: data.cancelAtPeriodEnd ?? false,
       plan: keepsPaidPlan ? plan : "free",
       trial_ends_at: null,
     })
@@ -83,6 +84,7 @@ export async function updateAccountSubscription(data: {
     accountId,
     plan,
     status: data.status,
+    cancelAtPeriodEnd: data.cancelAtPeriodEnd ?? false,
   });
 }
 
@@ -99,9 +101,20 @@ export async function clearAccountSubscription(data: {
     accountId = await findAccountByPaddleSubscriptionId(
       data.paddleSubscriptionId,
     );
+
+    if (!accountId) {
+      logger.warn(
+        "Paddle subscription clear skipped: subscription not linked to any account",
+        {
+          paddleSubscriptionId: data.paddleSubscriptionId,
+          paddleCustomerId: data.paddleCustomerId ?? null,
+        },
+      );
+      return;
+    }
   }
 
-  if (!accountId && data.paddleCustomerId) {
+  if (!accountId && !data.paddleSubscriptionId && data.paddleCustomerId) {
     accountId = await findAccountByPaddleCustomerId(data.paddleCustomerId);
   }
 
