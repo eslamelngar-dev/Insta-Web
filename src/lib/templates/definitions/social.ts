@@ -1,3 +1,305 @@
 import type { ConfigTemplateDefinition } from "@/types/template";
+import { THEME_PRESETS } from "@/lib/templates/themes";
 
-export const SOCIAL_TEMPLATES: ConfigTemplateDefinition[] = [];
+export const SOCIAL_TEMPLATES: ConfigTemplateDefinition[] = [
+  {
+    id: "starter-bio",
+    name: "Starter Bio",
+    category: "Social Card",
+    pageType: "social",
+    description:
+      "A clean and simple bio link page. Perfect for getting started.",
+    tier: "free",
+    tags: ["bio", "simple", "starter", "clean", "minimal"],
+    isFeatured: false,
+    isNew: true,
+    schemaVersion: 1,
+    theme: THEME_PRESETS.clean,
+    sections: [
+      { type: "hero", variant: "profile", visible: true, order: 1 },
+      { type: "social", variant: "icons", visible: true, order: 2 },
+      { type: "links", variant: "list", visible: true, order: 3 },
+      { type: "footer", variant: "minimal", visible: true, order: 4 },
+    ],
+    defaultContent: {
+      color: "#6366f1",
+      theme_mode: "light",
+      title: "Your Name",
+      bio: "Welcome to my corner of the internet.",
+      avatar_url: "",
+      social_links: [
+        { id: "1", platform: "instagram", url: "https://instagram.com" },
+        { id: "2", platform: "x", url: "https://x.com" },
+      ],
+      links: [
+        { id: "1", label: "My Website", url: "https://", icon: "globe" },
+        { id: "2", label: "Latest Project", url: "https://", icon: "zap" },
+        { id: "3", label: "Contact Me", url: "https://", icon: "mail" },
+      ],
+      footer_text: "Made with InstaWeb",
+    },
+  },
+
+  {
+    id: "creator-hub",
+    name: "Creator Hub",
+    category: "Social Card",
+    pageType: "creator",
+    description:
+      "Built for content creators. Showcase your platforms and latest work.",
+    tier: "free",
+    tags: ["creator", "influencer", "content", "youtube", "social"],
+    isNew: true,
+    schemaVersion: 1,
+    theme: THEME_PRESETS.dark,
+    sections: [
+      { type: "hero", variant: "profile", visible: true, order: 1 },
+      { type: "social", variant: "cards", visible: true, order: 2 },
+      { type: "links", variant: "grid", visible: true, order: 3 },
+      { type: "footer", variant: "simple", visible: true, order: 4 },
+    ],
+    defaultContent: {
+      color: "#818cf8",
+      theme_mode: "dark",
+      title: "Creator Name",
+      bio: "Content creator, storyteller, and digital dreamer.",
+      avatar_url: "",
+      social_links: [
+        { id: "1", platform: "youtube", url: "https://youtube.com" },
+        { id: "2", platform: "instagram", url: "https://instagram.com" },
+        { id: "3", platform: "tiktok", url: "https://tiktok.com" },
+        { id: "4", platform: "x", url: "https://x.com" },
+      ],
+      links: [
+        { id: "1", label: "Latest Video", url: "https://", icon: "play" },
+        { id: "2", label: "Merch Store", url: "https://", icon: "globe" },
+        { id: "3", label: "Collabs", url: "https://", icon: "mail" },
+        { id: "4", label: "Newsletter", url: "https://", icon: "zap" },
+      ],
+      footer_text: "© 2025 Creator Name",
+    },
+  },
+
+  {
+    id: "dark-minimal",
+    name: "Dark Minimal",
+    category: "Social Card",
+    pageType: "social",
+    description:
+      "Sleek dark interface with minimal distractions. Let your links speak.",
+    tier: "free",
+    tags: ["dark", "minimal", "sleek", "professional"],
+    schemaVersion: 1,
+    theme: THEME_PRESETS.midnight,
+    sections: [
+      { type: "hero", variant: "minimal", visible: true, order: 1 },
+      { type: "social", variant: "minimal", visible: true, order: 2 },
+      { type: "links", variant: "list", visible: true, order: 3 },
+      { type: "footer", variant: "minimal", visible: true, order: 4 },
+    ],
+    defaultContent: {
+      color: "#6366f1",
+      theme_mode: "dark",
+      title: "Your Name",
+      bio: "Keeping it simple.",
+      avatar_url: "",
+      social_links: [
+        { id: "1", platform: "github", url: "https://github.com" },
+        { id: "2", platform: "linkedin", url: "https://linkedin.com" },
+      ],
+      links: [
+        { id: "1", label: "Portfolio", url: "https://", icon: "layout" },
+        { id: "2", label: "Blog", url: "https://", icon: "code" },
+        { id: "3", label: "Contact", url: "https://", icon: "mail" },
+      ],
+    },
+  },
+
+  {
+    id: "gradient-links",
+    name: "Gradient Links",
+    category: "Social Card",
+    pageType: "social",
+    description: "Vibrant gradient backgrounds with bold button styling.",
+    tier: "free",
+    tags: ["gradient", "colorful", "vibrant", "bold"],
+    isNew: true,
+    schemaVersion: 1,
+    theme: THEME_PRESETS.sunset,
+    sections: [
+      { type: "hero", variant: "gradient", visible: true, order: 1 },
+      { type: "social", variant: "icons", visible: true, order: 2 },
+      { type: "links", variant: "list", visible: true, order: 3 },
+      { type: "footer", variant: "minimal", visible: true, order: 4 },
+    ],
+    defaultContent: {
+      color: "#f97316",
+      theme_mode: "dark",
+      title: "Your Name",
+      bio: "Bold. Creative. Unstoppable.",
+      avatar_url: "",
+      social_links: [
+        { id: "1", platform: "instagram", url: "https://instagram.com" },
+        { id: "2", platform: "tiktok", url: "https://tiktok.com" },
+      ],
+      links: [
+        { id: "1", label: "Check My Work", url: "https://", icon: "zap" },
+        { id: "2", label: "Book a Call", url: "https://", icon: "mail" },
+        { id: "3", label: "Shop Now", url: "https://", icon: "globe" },
+      ],
+    },
+  },
+
+  {
+    id: "neon-profile",
+    name: "Neon Profile",
+    category: "Social Card",
+    pageType: "social",
+    description: "Cyberpunk-inspired neon aesthetic with monospace typography.",
+    tier: "premium",
+    tags: ["neon", "cyber", "developer", "hacker", "dark"],
+    schemaVersion: 1,
+    theme: THEME_PRESETS.neon,
+    sections: [
+      { type: "hero", variant: "profile", visible: true, order: 1 },
+      { type: "social", variant: "icons", visible: true, order: 2 },
+      { type: "links", variant: "list", visible: true, order: 3 },
+      { type: "footer", variant: "minimal", visible: true, order: 4 },
+    ],
+    defaultContent: {
+      color: "#00ff88",
+      theme_mode: "dark",
+      title: "h4ck3r_name",
+      bio: "// full-stack engineer && open source contributor",
+      avatar_url: "",
+      social_links: [
+        { id: "1", platform: "github", url: "https://github.com" },
+        { id: "2", platform: "x", url: "https://x.com" },
+      ],
+      links: [
+        { id: "1", label: "$ cat projects.md", url: "https://", icon: "code" },
+        {
+          id: "2",
+          label: "$ open resume.pdf",
+          url: "https://",
+          icon: "layout",
+        },
+        { id: "3", label: "$ mail --send", url: "https://", icon: "mail" },
+      ],
+    },
+  },
+
+  {
+    id: "clean-card",
+    name: "Clean Card",
+    category: "Social Card",
+    pageType: "social",
+    description:
+      "Ultra-clean light design with soft shadows and rounded corners.",
+    tier: "free",
+    tags: ["clean", "light", "soft", "rounded", "modern"],
+    schemaVersion: 1,
+    theme: {
+      ...THEME_PRESETS.clean,
+      radius: "xl",
+      shadow: "md",
+      cardStyle: "elevated",
+    },
+    sections: [
+      { type: "hero", variant: "profile", visible: true, order: 1 },
+      { type: "social", variant: "icons", visible: true, order: 2 },
+      { type: "links", variant: "cards", visible: true, order: 3 },
+      { type: "footer", variant: "minimal", visible: true, order: 4 },
+    ],
+    defaultContent: {
+      color: "#6366f1",
+      theme_mode: "light",
+      title: "Your Name",
+      bio: "Designer & Developer crafting beautiful digital experiences.",
+      avatar_url: "",
+      social_links: [
+        { id: "1", platform: "dribbble", url: "https://dribbble.com" },
+        { id: "2", platform: "behance", url: "https://behance.net" },
+        { id: "3", platform: "linkedin", url: "https://linkedin.com" },
+      ],
+      links: [
+        { id: "1", label: "Portfolio", url: "https://", icon: "layout" },
+        { id: "2", label: "Services", url: "https://", icon: "zap" },
+        { id: "3", label: "Contact", url: "https://", icon: "mail" },
+      ],
+    },
+  },
+
+  {
+    id: "bold-identity",
+    name: "Bold Identity",
+    category: "Social Card",
+    pageType: "social",
+    description:
+      "Strong typography and brutalist design for those who stand out.",
+    tier: "premium",
+    tags: ["brutalist", "bold", "typography", "strong", "editorial"],
+    schemaVersion: 1,
+    theme: THEME_PRESETS.brutalist,
+    sections: [
+      { type: "hero", variant: "centered", visible: true, order: 1 },
+      { type: "social", variant: "minimal", visible: true, order: 2 },
+      { type: "links", variant: "list", visible: true, order: 3 },
+      { type: "footer", variant: "simple", visible: true, order: 4 },
+    ],
+    defaultContent: {
+      color: "#000000",
+      theme_mode: "light",
+      title: "YOUR NAME",
+      bio: "No fluff. Just work.",
+      avatar_url: "",
+      social_links: [
+        { id: "1", platform: "x", url: "https://x.com" },
+        { id: "2", platform: "linkedin", url: "https://linkedin.com" },
+      ],
+      links: [
+        { id: "1", label: "WORK", url: "https://", icon: "layout" },
+        { id: "2", label: "WRITING", url: "https://", icon: "code" },
+        { id: "3", label: "EMAIL", url: "https://", icon: "mail" },
+      ],
+      footer_text: "© 2025. ALL RIGHTS RESERVED.",
+    },
+  },
+
+  {
+    id: "rose-soft",
+    name: "Rose Soft",
+    category: "Social Card",
+    pageType: "social",
+    description:
+      "Warm rose tones with soft aesthetics. Perfect for lifestyle and beauty.",
+    tier: "free",
+    tags: ["rose", "pink", "soft", "beauty", "lifestyle", "warm"],
+    isNew: true,
+    schemaVersion: 1,
+    theme: THEME_PRESETS.rose,
+    sections: [
+      { type: "hero", variant: "profile", visible: true, order: 1 },
+      { type: "social", variant: "icons", visible: true, order: 2 },
+      { type: "links", variant: "cards", visible: true, order: 3 },
+      { type: "footer", variant: "minimal", visible: true, order: 4 },
+    ],
+    defaultContent: {
+      color: "#e11d48",
+      theme_mode: "light",
+      title: "Your Name",
+      bio: "Beauty, lifestyle & all things creative ✨",
+      avatar_url: "",
+      social_links: [
+        { id: "1", platform: "instagram", url: "https://instagram.com" },
+        { id: "2", platform: "tiktok", url: "https://tiktok.com" },
+        { id: "3", platform: "youtube", url: "https://youtube.com" },
+      ],
+      links: [
+        { id: "1", label: "My Blog", url: "https://", icon: "globe" },
+        { id: "2", label: "Shop My Looks", url: "https://", icon: "zap" },
+        { id: "3", label: "Collab With Me", url: "https://", icon: "mail" },
+      ],
+    },
+  },
+];
