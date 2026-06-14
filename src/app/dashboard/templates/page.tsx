@@ -5,159 +5,41 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles,
   ArrowRight,
-  Globe,
-  Mail,
-  Zap,
-  ExternalLink,
-  Code,
-  Layout,
-  MessageCircle,
-  Play,
   Search,
   SlidersHorizontal,
   X,
   ChevronDown,
+  Crown,
 } from "lucide-react";
 import Link from "next/link";
 import { TEMPLATES_REGISTRY } from "@/lib/templates-registry";
-
-type IconProps = React.SVGProps<SVGSVGElement>;
-type TemplateContent = Record<string, unknown> & {
-  theme_mode?: string;
-};
-
-const Icons: Record<string, React.FC<IconProps>> = {
-  x: (p) => (
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      {...p}
-    >
-      <path d="M4 4l11.733 16H20L8.267 4H4zM4 20l6.768-6.768m2.46-2.46L20 4" />
-    </svg>
-  ),
-  whatsapp: (p) => (
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...p}
-    >
-      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 1 1-7.6-10.6 8.38 8.38 0 0 1 3.8.9L21 4.5z" />
-      <path d="M15.54 12.85a1.5 1.5 0 0 0-1.5-1.5h-1a1.5 1.5 0 0 0-1.5 1.5v1a1.5 1.5 0 0 0 1.5 1.5h1a1.5 1.5 0 0 0 1.5-1.5z" />
-    </svg>
-  ),
-  github: (p) => (
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      {...p}
-    >
-      <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.28 1.15-.28 2.35 0 3.5-.73 1.02-1.08 2.25-1 3.5 0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
-      <path d="M9 18c-4.51 2-4.51-2-7-2" />
-    </svg>
-  ),
-  instagram: (p) => (
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      {...p}
-    >
-      <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
-      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-      <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
-    </svg>
-  ),
-  linkedin: (p) => (
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      {...p}
-    >
-      <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
-      <rect width="4" height="12" x="2" y="9" />
-      <circle cx="4" cy="4" r="2" />
-    </svg>
-  ),
-  facebook: (p) => (
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      {...p}
-    >
-      <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
-    </svg>
-  ),
-  youtube: (p) => (
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      {...p}
-    >
-      <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" />
-      <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" />
-    </svg>
-  ),
-};
-
-const BtnIcons: Record<string, React.FC<React.ComponentProps<"svg">>> = {
-  globe: Globe,
-  mail: Mail,
-  zap: Zap,
-  link: ExternalLink,
-  code: Code,
-  layout: Layout,
-  chat: MessageCircle,
-  play: Play,
-};
-
-const PREDEFINED_CATEGORIES = [
-  "All",
-  "Bento",
-  "Portfolio",
-  "Social Card",
-  "Creator",
-  "E-commerce",
-  "Business",
-  "Event",
-];
+import { Icons, ButtonIcons } from "@/constants/icons";
 
 export default function TemplatesPage() {
   const [activeCategory, setActiveCategory] = useState("All");
+  const [activePageType, setActivePageType] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
 
+  const categories = useMemo(() => {
+    const cats = new Set(
+      Object.values(TEMPLATES_REGISTRY).map((t) => t.category),
+    );
+    return ["All", ...Array.from(cats).sort()];
+  }, []);
+
+  const pageTypes = useMemo(() => {
+    const types = new Set(
+      Object.values(TEMPLATES_REGISTRY).map((t) => t.pageType),
+    );
+    return ["All", ...Array.from(types).sort()];
+  }, []);
+
   const normalizedSearch = searchQuery.trim().toLowerCase();
+
   const hasActiveFilters =
-    activeCategory !== "All" || normalizedSearch.length > 0;
+    activeCategory !== "All" ||
+    activePageType !== "All" ||
+    normalizedSearch.length > 0;
 
   const filteredTemplates = useMemo(() => {
     return Object.values(TEMPLATES_REGISTRY).filter((template) => {
@@ -165,19 +47,26 @@ export default function TemplatesPage() {
         activeCategory === "All" ||
         template.category.toLowerCase() === activeCategory.toLowerCase();
 
+      const matchesPageType =
+        activePageType === "All" || template.pageType === activePageType;
+
       const matchesSearch =
         normalizedSearch.length === 0 ||
         template.name.toLowerCase().includes(normalizedSearch) ||
         template.description.toLowerCase().includes(normalizedSearch) ||
-        template.category.toLowerCase().includes(normalizedSearch);
+        template.category.toLowerCase().includes(normalizedSearch) ||
+        template.tags?.some((tag) =>
+          tag.toLowerCase().includes(normalizedSearch),
+        );
 
-      return matchesCategory && matchesSearch;
+      return matchesCategory && matchesPageType && matchesSearch;
     });
-  }, [activeCategory, normalizedSearch]);
+  }, [activeCategory, activePageType, normalizedSearch]);
 
   const clearFilters = () => {
     setSearchQuery("");
     setActiveCategory("All");
+    setActivePageType("All");
   };
 
   return (
@@ -198,11 +87,9 @@ export default function TemplatesPage() {
                 Live Previews
               </span>
             </div>
-
             <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter uppercase mb-3 sm:mb-4 bg-linear-to-br from-slate-900 to-slate-500 dark:from-white dark:to-slate-400 bg-clip-text text-transparent px-2">
               Select Your Identity
             </h2>
-
             <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-medium max-w-lg mx-auto px-4">
               What you see is exactly what you get. Choose a layout to start
               customizing your digital presence.
@@ -231,8 +118,7 @@ export default function TemplatesPage() {
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm font-medium focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-400"
                   />
                 </div>
-
-                <div className="grid grid-cols-[1fr_auto] gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <div className="relative">
                     <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-400">
                       <SlidersHorizontal size={16} />
@@ -242,9 +128,9 @@ export default function TemplatesPage() {
                       onChange={(e) => setActiveCategory(e.target.value)}
                       className="w-full appearance-none bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl pl-10 pr-10 py-3 text-sm font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
                     >
-                      {PREDEFINED_CATEGORIES.map((category) => (
-                        <option key={category} value={category}>
-                          {category}
+                      {categories.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
                         </option>
                       ))}
                     </select>
@@ -252,37 +138,71 @@ export default function TemplatesPage() {
                       <ChevronDown size={16} />
                     </div>
                   </div>
-
-                  {hasActiveFilters && (
-                    <button
-                      onClick={clearFilters}
-                      className="px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  <div className="relative">
+                    <select
+                      value={activePageType}
+                      onChange={(e) => setActivePageType(e.target.value)}
+                      className="w-full appearance-none bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl px-4 pr-10 py-3 text-sm font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
                     >
-                      Clear
-                    </button>
-                  )}
+                      {pageTypes.map((pt) => (
+                        <option key={pt} value={pt}>
+                          {pt === "All"
+                            ? "All Types"
+                            : pt.charAt(0).toUpperCase() + pt.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-400">
+                      <ChevronDown size={16} />
+                    </div>
+                  </div>
                 </div>
+                {hasActiveFilters && (
+                  <button
+                    onClick={clearFilters}
+                    className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    Clear Filters
+                  </button>
+                )}
               </div>
 
               <div className="hidden md:flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
-                <div className="flex items-center gap-3 overflow-x-auto w-full pb-1 px-1 scroll-smooth touch-pan-x [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                  <div className="flex items-center justify-center p-2 text-slate-400 border-r border-slate-200 dark:border-white/10 pr-3 shrink-0">
-                    <SlidersHorizontal size={18} />
+                <div className="flex flex-col gap-3 w-full xl:flex-1">
+                  <div className="flex items-center gap-3 overflow-x-auto pb-1 px-1 scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                    <div className="flex items-center justify-center p-2 text-slate-400 border-r border-slate-200 dark:border-white/10 pr-3 shrink-0">
+                      <SlidersHorizontal size={18} />
+                    </div>
+                    {categories.map((cat) => (
+                      <button
+                        key={cat}
+                        onClick={() => setActiveCategory(cat)}
+                        className={`px-4 lg:px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest whitespace-nowrap transition-all shrink-0 ${
+                          activeCategory === cat
+                            ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                            : "text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950/50 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white"
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
                   </div>
 
-                  {PREDEFINED_CATEGORIES.map((category) => (
-                    <button
-                      key={category}
-                      onClick={() => setActiveCategory(category)}
-                      className={`px-4 lg:px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest whitespace-nowrap transition-all shrink-0 ${
-                        activeCategory === category
-                          ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
-                          : "text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950/50 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white"
-                      }`}
-                    >
-                      {category}
-                    </button>
-                  ))}
+                  <div className="flex items-center gap-3 overflow-x-auto pb-1 px-1 scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                    {pageTypes.map((pt) => (
+                      <button
+                        key={pt}
+                        onClick={() => setActivePageType(pt)}
+                        className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest whitespace-nowrap transition-all shrink-0 ${
+                          activePageType === pt
+                            ? "bg-purple-600 text-white shadow-md shadow-purple-600/20"
+                            : "text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-950/50 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white"
+                        }`}
+                      >
+                        {pt === "All" ? "All Types" : pt}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-3 w-full xl:w-auto">
@@ -298,14 +218,12 @@ export default function TemplatesPage() {
                       className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm font-medium focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-400"
                     />
                   </div>
-
                   {hasActiveFilters && (
                     <button
                       onClick={clearFilters}
                       className="shrink-0 inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                     >
-                      <X size={14} />
-                      Clear
+                      <X size={14} /> Clear
                     </button>
                   )}
                 </div>
@@ -316,7 +234,6 @@ export default function TemplatesPage() {
                   {filteredTemplates.length} Template
                   {filteredTemplates.length !== 1 ? "s" : ""} Found
                 </p>
-
                 {hasActiveFilters && (
                   <div className="flex flex-wrap items-center gap-2">
                     {activeCategory !== "All" && (
@@ -324,7 +241,11 @@ export default function TemplatesPage() {
                         {activeCategory}
                       </span>
                     )}
-
+                    {activePageType !== "All" && (
+                      <span className="px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 text-[10px] font-black uppercase tracking-widest border border-purple-100 dark:border-purple-500/20">
+                        {activePageType}
+                      </span>
+                    )}
                     {normalizedSearch && (
                       <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-black uppercase tracking-widest border border-slate-200 dark:border-white/10 max-w-full truncate">
                         {searchQuery}
@@ -341,7 +262,7 @@ export default function TemplatesPage() {
           <AnimatePresence mode="wait">
             {filteredTemplates.length > 0 ? (
               <motion.div
-                key={`${activeCategory}-${normalizedSearch}`}
+                key={`${activeCategory}-${activePageType}-${normalizedSearch}`}
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -15 }}
@@ -350,8 +271,7 @@ export default function TemplatesPage() {
               >
                 {filteredTemplates.map((template) => {
                   const TemplateComponent = template.component;
-                  const content = (template.defaultContent ??
-                    {}) as TemplateContent;
+                  const content = template.defaultContent ?? {};
                   const isDark = content.theme_mode === "dark";
 
                   return (
@@ -371,7 +291,7 @@ export default function TemplatesPage() {
                               site={{ content }}
                               isDark={isDark}
                               Icons={Icons}
-                              BtnIcons={BtnIcons}
+                              BtnIcons={ButtonIcons}
                             />
                           </div>
                         </div>
@@ -383,6 +303,18 @@ export default function TemplatesPage() {
                             <span className="text-[9px] font-black uppercase tracking-widest text-indigo-500 bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/10">
                               {template.category}
                             </span>
+                            <div className="flex items-center gap-2">
+                              {template.isNew && (
+                                <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/10">
+                                  New
+                                </span>
+                              )}
+                              {template.tier === "premium" && (
+                                <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-amber-500 bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/10">
+                                  <Crown size={10} /> Pro
+                                </span>
+                              )}
+                            </div>
                           </div>
 
                           <h3 className="text-lg sm:text-xl font-black uppercase tracking-tight mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
@@ -417,16 +349,12 @@ export default function TemplatesPage() {
                 <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-100 dark:bg-slate-900 rounded-full flex items-center justify-center text-slate-400 mb-4 sm:mb-6 border border-slate-200 dark:border-white/5">
                   <Search size={28} />
                 </div>
-
                 <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tight mb-2">
                   No Templates Found
                 </h3>
-
                 <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-medium mb-6 sm:mb-8">
-                  We couldn&apos;t find any templates matching &quot;
-                  {searchQuery}&quot; in {activeCategory}.
+                  We couldn&apos;t find any templates matching your filters.
                 </p>
-
                 <button
                   onClick={clearFilters}
                   className="px-6 py-3 bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors"

@@ -1,4 +1,3 @@
-// src/components/templates/ClassicTemplate.tsx
 "use client";
 
 import React from "react";
